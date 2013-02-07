@@ -1,0 +1,11 @@
+*.pyc
+*.pyo
+*.swp
+.Python
+/bin
+/include
+/lib
+/share
+/.project
+/.pydevproject
+/.vimrc
