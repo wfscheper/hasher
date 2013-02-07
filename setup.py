@@ -4,7 +4,7 @@ import sys
 from setuptools import setup, find_packages
 from setuptools.command.test import test as TestCommand
 
-from md5sum.version import __version__
+from hasher.version import __version__
 
 
 class PyTest(TestCommand):
@@ -25,10 +25,11 @@ def read(fname):
 
 requirements = []
 
-hashers = [dirnames for root, dirnames, filenames in os.walk('md5sum/hashes/')]
+hashers = [fname for fname in os.listdir('hasher/hashes')
+           if fname != '__init__.py']
 
 setup(
-    name="md5sum",
+    name="hasher",
     version=".".join(map(str, __version__)),
     description="Print or check MD5 (128-bit) checksums.",
     long_description=read('README.rst'),
@@ -39,7 +40,8 @@ setup(
     packages=find_packages(exclude=['tests']),
     include_package_data=True,
     entry_points={
-        'console_scripts': ['%s = md5sum:main' % h for h in hashers],
+        'console_scripts': ['{0}sum = hasher.main:main'.format(h)
+                            for h in hashers],
     },
     classifiers=[
         'Development Status :: 3 - Alpha',
