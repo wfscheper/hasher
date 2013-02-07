@@ -5,7 +5,7 @@ Created on Jan 21, 2013
 '''
 from hashlib import md5
 
-from . import Hasher
+from .base import Hasher
 
 
 def run(args):
@@ -14,8 +14,8 @@ def run(args):
 
 
 class MD5Hasher(Hasher):
-    
+
     def __init__(self, args):
         super(MD5Hasher, self).__init__(args)
         self.hashlib = md5()
-        
+        self.name = 'md5sum'
