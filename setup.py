@@ -25,8 +25,10 @@ def read(fname):
 
 requirements = []
 
-hashers = [fname for fname in os.listdir('hasher/hashes')
-           if fname != '__init__.py']
+hashers = []
+for fname in os.listdir('hasher/hashes'):
+    if fname not in ['__init__.py', 'base.py'] and not fname.endswith('.pyc'):
+        hashers.append(fname.strip('.py'))
 
 setup(
     name="hasher",
