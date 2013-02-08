@@ -7,7 +7,7 @@ import re
 import sys
 
 
-check_re = re.compile(r'^(\S+)  (\*)?([ a-f0-9]+)$')
+check_re = re.compile(r'^([ a-f0-9]+)  (\*)?(.+)$')
 
 
 class Hasher(object):
