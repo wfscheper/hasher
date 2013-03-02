@@ -76,7 +76,7 @@ class Hasher(object):
 
     def iterfiles(self):
         """Iterate over filenames in args.file"""
-        for fname in self.args.FILE:
+        for fname in self.args.file:
             if fname == '-':
                 # read from stdin
                 fobj = sys.stdin
