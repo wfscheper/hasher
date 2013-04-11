@@ -20,7 +20,8 @@ check_re = re.compile(r'^([ a-f0-9]+)  (\*)?(.+)$')
 
 
 class Hasher(object):
-    """Base class for various sub-classes that implement specific hashing
+    """
+    Base class for various sub-classes that implement specific hashing
     algorithms.
     """
     def __init__(self, args):
@@ -28,14 +29,16 @@ class Hasher(object):
         self.chunk_size = 64 * 2048
 
     def calculate_hash(self, file_object):
-        """Calculate a hash value for the data in ``file_object
+        """
+        Calculate a hash value for the data in ``file_object
         """
         for chunk in self.iterchunks(file_object):
             self.hashlib.update(chunk)
         return self.hashlib.hexdigest()
 
     def check_hashes(self):
-        """Check the hashed values in files against the calculated values
+        """
+        Check the hashed values in files against the calculated values
         """
         for fname, fobj in self.iterfiles():
             # if file failed to open, report that
@@ -85,7 +88,7 @@ class Hasher(object):
 
     def iterfiles(self):
         """Iterate over filenames in args.file"""
-        for fname in self.args.FILE:
+        for fname in self.args.file:
             if fname == '-':
                 # read from stdin
                 fobj = sys.stdin
@@ -105,7 +108,8 @@ class Hasher(object):
             data = file_object.read(self.chunk_size)
 
     def read_error(self, filename):
-        """Write a warning that we couldn't open the file ``filename``
+        """
+        Write a warning that we couldn't open the file ``filename``
         """
         sys.stderr.write("{0}: {1}: No such file or directory\n".format(
             self.name, filename))

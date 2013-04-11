@@ -40,9 +40,10 @@ def main():
         description=DESCRIPTION, epilog=EPILOG)
 
     parser.add_argument(
-        "FILE",
+        "file",
         nargs="*",
-        default="-")
+        default="-",
+        metavar="FILE")
 
     parser.add_argument(
         "-c", "--check",
