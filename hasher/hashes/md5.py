@@ -22,14 +22,13 @@ from hashlib import md5
 from .base import Hasher
 
 
-def run(args):
-    hasher = MD5Hasher(args)
-    hasher.run()
-
-
 class MD5Hasher(Hasher):
 
-    def __init__(self, args):
-        super(MD5Hasher, self).__init__(args)
+    def __init__(self):
+        super(MD5Hasher, self).__init__()
         self.hashlib = md5()
         self.name = 'md5sum'
+
+
+def hasher_factory():
+    return MD5Hasher()

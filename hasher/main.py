@@ -37,69 +37,88 @@ text), and name for each FILE.
 
 def main():
     parser = argparse.ArgumentParser(
-        description=DESCRIPTION, epilog=EPILOG)
+        description=DESCRIPTION, epilog=EPILOG,
+        )
 
     parser.add_argument(
         "file",
         nargs="*",
         default="-",
-        metavar="FILE")
+        metavar="FILE",
+        )
 
     parser.add_argument(
         "-c", "--check",
         action="store_true",
-        help="read MD5 sums from the FILEs and check them")
+        help="read MD5 sums from the FILEs and check them",
+        )
 
     parser.add_argument(
         "-b", "--binary",
         action="store_true",
-        default=False,
-        help="read in binary mode")
+        help="read in binary mode",
+        )
 
     parser.add_argument(
         "-t", "--text",
         action="store_true",
-        default=True,
-        help="read in text mode (default)")
+        help="read in text mode (default)",
+        )
 
     parser.add_argument(
         "--quiet",
         action="store_true",
-        help="don't print OK for each successfully verified file")
+        help="don't print OK for each successfully verified file",
+        )
 
     parser.add_argument(
         "--status",
         action="store_true",
-        help="don't output anything, status code shows success")
+        help="don't output anything, status code shows success",
+        )
 
     parser.add_argument(
         "-w", "--warn",
         action="store_true",
-        help="warn about improperly formatted checksum lines")
+        help="warn about improperly formatted checksum lines",
+        )
 
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="with --check, exit non-zero for any invalid input")
+        help="with --check, exit non-zero for any invalid input",
+        )
 
     parser.add_argument(
         "--version",
         action="version",
-        version=".".join(map(str, __version__)))
+        version=".".join(map(str, __version__)),
+        )
 
     args = parser.parse_args()
-    if args.check and (args.binary or args.text):
+    if args.check and (args.binary and args.text):
         parser.error(
             'the --binary and --text options are meaningless when verifying'
-            'checksums')
+            ' checksums')
 
-    if not args.check and (args.warn or args.status or args.quiet):
+    if not args.check and (
+            args.warn or args.status or args.quiet or args.strict):
         parser.error(
             'the --warn, --status, and --quiet options are meaningful'
             ' only when verifying checksums')
 
     module = importlib.import_module("hasher.hashes.%s" % parser.prog[:-3])
-    module.run(args)
+    hasher = module.hasher_factory()
+
+    try:
+        for fname in args.file:
+            if args.check:
+                hasher.check_hash(fname).display(**vars(args))
+            else:
+                hasher.generate_hash(fname).display(**vars(args))
+    except:
+        return 1
+    return 0
 
 if __name__ == '__main__':
     main()

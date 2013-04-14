@@ -16,7 +16,7 @@ import re
 import sys
 
 
-check_re = re.compile(r'^([ a-f0-9]+)  (\*)?(.+)$')
+check_re = re.compile(r'^([a-f0-9]+)  (\*)?(.+)$')
 
 
 class Hasher(object):
@@ -24,9 +24,13 @@ class Hasher(object):
     Base class for various sub-classes that implement specific hashing
     algorithms.
     """
-    def __init__(self, args):
-        self.args = args
+    def __init__(self):
         self.chunk_size = 64 * 2048
+
+    def _open_file(self, fname):
+        if fname == '-':
+            return sys.stdin
+        return open(fname)
 
     def calculate_hash(self, file_object):
         """
@@ -36,70 +40,55 @@ class Hasher(object):
             self.hashlib.update(chunk)
         return self.hashlib.hexdigest()
 
-    def check_hashes(self):
+    def check_hash(self, fname):
         """
         Check the hashed values in files against the calculated values
+
+        Returns a list and a tuple of error counts.
+
+        list: [(fname, 'OK' or 'FAILED' or 'FAILED open or read'),...]
+        Error counts: (format_erros, hash_errors, read_errors)
         """
-        for fname, fobj in self.iterfiles():
-            # if file failed to open, report that
-            if fobj is None:
-                self.report_failed_read(fname)
+        fobj = self._open_file(fname)
+
+        results = CheckHashResult()
+        for line in fobj:
+            # remove any newline characters
+            m = check_re.match(line.strip())
+            if not m:
+                results.format_errors += 1
+                continue
+            hash_value, binary, check_file = m.groups()
+
+            if binary == '*':
+                mode = 'rb'
+            else:
+                mode = 'r'
+
+            try:
+                check_f = open(check_file, mode)
+            except IOError:
+                results.read_errors += 1
+                results.append((fname, 'FAILED open or read',))
                 continue
 
-            read_errors = 0
-            hash_errors = 0
-            format_errors = 0
-
-            for line in fobj:
-                m = check_re.match(line)
-                if not m:
-                    format_errors += 1
-                    continue
-                check_file, binary, hash_value = m.groups()
-
-                if binary == '*':
-                    mode = 'rb'
-                else:
-                    mode = 'r'
-
-                try:
-                    check_f = open(check_file, mode)
-                except IOError:
-                    self.read_error(check_file)
-                    self.report_failed_read(check_file)
-                    read_errors += 1
-                    continue
-
-                if self.calculate_hash(check_f) == hash_value:
-                    self.report_match(check_file)
-                else:
-                    self.report_mismatch(check_file)
-                    hash_errors += 1
-
-            self.report_format_errors(format_errors)
-            self.report_read_errors(read_errors)
-            self.report_hash_errors(hash_errors)
-
-    def generate_hashes(self):
-        """Generate hashes for files"""
-        for fname, fobj in self.iterfiles():
-            if fobj is not None:
-                self.report_hash(fname, self.calculate_hash(fobj))
-
-    def iterfiles(self):
-        """Iterate over filenames in args.file"""
-        for fname in self.args.file:
-            if fname == '-':
-                # read from stdin
-                fobj = sys.stdin
+            if self.calculate_hash(check_f) == hash_value:
+                results.append((fname, 'OK',))
             else:
-                # try and open file
-                try:
-                    fobj = open(fname)
-                except IOError:
-                    self.read_error(fname)
-                    fobj = None
-            yield (fname, fobj)
+                results.append((fname, 'FAILED',))
+                results.hash_errors += 1
+        return results
+
+    def generate_hash(self, fname):
+        """Generate hashes for files"""
+        fobj = self._open_file(fname)
+        hash_value = self.calculate_hash(fobj)
+        escaped_fname = fname[:]
+        # prepend a \ to lines for files that contain any backslashes
+        # and escape the backslashes
+        if "\\" in escaped_fname:
+            escaped_fname = "\\" + escaped_fname.replace("\\", "\\\\")
+        return (escaped_fname, hash_value)
 
     def iterchunks(self, file_object):
         data = file_object.read(self.chunk_size)
@@ -107,63 +96,52 @@ class Hasher(object):
             yield data
             data = file_object.read(self.chunk_size)
 
-    def read_error(self, filename):
-        """
-        Write a warning that we couldn't open the file ``filename``
-        """
-        sys.stderr.write("{0}: {1}: No such file or directory\n".format(
-            self.name, filename))
 
-    def report_failed_read(self, filename):
-        if not self.args.status:
-            sys.stdout.write("{0}: FAILED open or read".format(filename))
+class HashResult(list):
 
-    def report_format_errors(self, count):
-        if not self.args.status and count:
+    def __init__(self, name, *args, **kwargs):
+        super(HashResult, self).__init__(*args, **kwargs)
+        self.name = name
+        self.format_errors = 0
+        self.hash_errors = 0
+        self.read_errors = 0
+
+    def display(self, **kwargs):
+        raise NotImplementedError()
+
+
+class CheckHashResult(HashResult):
+
+    def display(self, **kwargs):
+        status = kwargs.get('status', False)
+        strict = kwargs.get('strict', False)
+        quiet = kwargs.get('quiet', False)
+        warn = kwargs.get('warn', False)
+
+        if status:
+            return
+
+        for result in self:
+            continue
+
+        if not status:
+            if warn:
+                sys.stderr.write(
+                    '{0}: WARNING: {1} line{2} is improperly'
+                    ' formatted\n'.format(
+                        self.name,
+                        self.format_errors,
+                        's' if self.format_errors > 1 else '',
+                        ))
             sys.stderr.write(
-                "{0}: WARNING: {1} line{2} are improperly formatted\n".format(
-                    self.name, count, 's' if count > 1 else ''))
-
-    def report_hash(self, filename, hash_value):
-        if not self.args.quiet:
-            if self.args.binary:
-                msg = "{0} *{1}\n"
-            else:
-                msg = "{0}  {1}\n"
-            # format the message
-            msg = msg.format(hash_value, filename)
-
-            # append a \ to lines for files that contain any backslashes
-            # and escape the backslashes
-            if "\\" in filename:
-                msg = "\\" + msg.replace("\\", "\\\\")
-            sys.stdout.write(msg)
-
-    def report_hash_errors(self, count):
-        if not self.args.status and count:
+                '{0}: WARNING: {1} listed file{2} could not be read\n'.format(
+                    self.name,
+                    self.read_errors,
+                    's' if self.read_errors > 1 else '',
+                    ))
             sys.stderr.write(
-                "{0}: WARNING: {1} computed checksum{2} "
-                "did NOT match\n".format(
-                    self.name, count, 's' if count > 1 else ''))
-
-    def report_match(self, filename):
-        if not (self.args.quiet or self.args.status):
-            sys.stdout.write('{0}: OK'.format(filename))
-
-    def report_mismatch(self, filename):
-        if not self.args.status:
-            sys.stdout.write('{0}: FAILED'.format(filename))
-
-    def report_read_errors(self, count):
-        """Report the number of read errors encountered
-        """
-        if not self.args.status and count:
-            sys.stderr.write(
-                "{0}: WARNING: {1} listed file{2} could not be read\n".format(
-                    self.name, count, 's' if count > 1 else ''))
-
-    def run(self):
-        if self.args.check:
-            self.check_hashes()
-        else:
-            self.generate_hashes()
+                '{0}: WARNING: {1} computed checksum{2} did NOT match\n'.format(
+                    self.name,
+                    self.hash_errors,
+                    's' if self.hash_errors > 1 else '',
+                    ))
