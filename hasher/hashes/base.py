@@ -15,6 +15,8 @@
 import re
 import sys
 
+from hasher import FORMAT_ERROR, HASH_ERROR, READ_ERROR, SUCCESS
+
 
 check_re = re.compile(r'^([a-f0-9]+)  (\*)?(.+)$')
 
@@ -51,11 +53,12 @@ class Hasher(object):
         """
         fobj = self._open_file(fname)
 
-        results = CheckHashResult()
+        results = CheckHashResult(self.name, fname)
         for line in fobj:
             # remove any newline characters
             m = check_re.match(line.strip())
             if not m:
+                results.append((None, FORMAT_ERROR))
                 results.format_errors += 1
                 continue
             hash_value, binary, check_file = m.groups()
@@ -69,13 +72,13 @@ class Hasher(object):
                 check_f = open(check_file, mode)
             except IOError:
                 results.read_errors += 1
-                results.append((fname, 'FAILED open or read',))
+                results.append((fname, READ_ERROR))
                 continue
 
             if self.calculate_hash(check_f) == hash_value:
-                results.append((fname, 'OK',))
+                results.append((fname, SUCCESS,))
             else:
-                results.append((fname, 'FAILED',))
+                results.append((fname, HASH_ERROR,))
                 results.hash_errors += 1
         return results
 
@@ -83,12 +86,7 @@ class Hasher(object):
         """Generate hashes for files"""
         fobj = self._open_file(fname)
         hash_value = self.calculate_hash(fobj)
-        escaped_fname = fname[:]
-        # prepend a \ to lines for files that contain any backslashes
-        # and escape the backslashes
-        if "\\" in escaped_fname:
-            escaped_fname = "\\" + escaped_fname.replace("\\", "\\\\")
-        return (escaped_fname, hash_value)
+        return GenerateHashResult(self.name, fname, hash_value)
 
     def iterchunks(self, file_object):
         data = file_object.read(self.chunk_size)
@@ -99,12 +97,10 @@ class Hasher(object):
 
 class HashResult(list):
 
-    def __init__(self, name, *args, **kwargs):
-        super(HashResult, self).__init__(*args, **kwargs)
+    def __init__(self, name, fname, *args):
+        super(HashResult, self).__init__(args)
         self.name = name
-        self.format_errors = 0
-        self.hash_errors = 0
-        self.read_errors = 0
+        self.fname = fname
 
     def display(self, **kwargs):
         raise NotImplementedError()
@@ -112,20 +108,37 @@ class HashResult(list):
 
 class CheckHashResult(HashResult):
 
+    def __init__(self, name, fname, *args, **kwargs):
+        super(CheckHashResult, self).__init__(name, fname, *args)
+        self.format_errors = kwargs.get('format_errors', 0)
+        self.hash_errors = kwargs.get('hash_errors', 0)
+        self.read_errors = kwargs.get('read_errors', 0)
+
     def display(self, **kwargs):
         status = kwargs.get('status', False)
-        strict = kwargs.get('strict', False)
         quiet = kwargs.get('quiet', False)
         warn = kwargs.get('warn', False)
 
-        if status:
-            return
+        for idx, result in enumerate(self):
+            if result[1] == 'FAILED open or read':
+                sys.stderr.write(
+                    '{0}: {1}: No such file or directory\n'.format(
+                        self.name, result[0]
+                        ))
+            if not (status or quiet) and result != (None, FORMAT_ERROR):
+                sys.stdout.write('{0}: {1}\n'.format(*result))
 
-        for result in self:
-            continue
+            if warn and result == (None, FORMAT_ERROR):
+                sys.stderr.write(
+                    '{0}: {1}: {2}: improperly formatted checksum'
+                    ' line\n'.format(
+                        self.name,
+                        self.fname,
+                        idx + 1,
+                        ))
 
         if not status:
-            if warn:
+            if warn and self.format_errors:
                 sys.stderr.write(
                     '{0}: WARNING: {1} line{2} is improperly'
                     ' formatted\n'.format(
@@ -133,15 +146,29 @@ class CheckHashResult(HashResult):
                         self.format_errors,
                         's' if self.format_errors > 1 else '',
                         ))
-            sys.stderr.write(
-                '{0}: WARNING: {1} listed file{2} could not be read\n'.format(
-                    self.name,
-                    self.read_errors,
-                    's' if self.read_errors > 1 else '',
-                    ))
-            sys.stderr.write(
-                '{0}: WARNING: {1} computed checksum{2} did NOT match\n'.format(
-                    self.name,
-                    self.hash_errors,
-                    's' if self.hash_errors > 1 else '',
-                    ))
+            if self.read_errors:
+                sys.stderr.write(
+                    '{0}: WARNING: {1} listed file{2} could not be read\n'.format(
+                        self.name,
+                        self.read_errors,
+                        's' if self.read_errors > 1 else '',
+                        ))
+            if self.hash_errors:
+                sys.stderr.write(
+                    '{0}: WARNING: {1} computed checksum{2} did NOT match\n'.format(
+                        self.name,
+                        self.hash_errors,
+                        's' if self.hash_errors > 1 else '',
+                        ))
+
+
+class GenerateHashResult(HashResult):
+
+    def display(self, **kwargs):
+        binary = kwargs.get('binary', False)
+
+        line = '{0} {2}{1}\n'.format(self[0], self[1], '*' if binary else '')
+
+        if '//' in line:
+            line = '//' + line.replace('//', '////')
+        sys.stdout.write(line)
