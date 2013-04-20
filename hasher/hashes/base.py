@@ -16,7 +16,12 @@ import functools
 import re
 import sys
 
-from hasher import FORMAT_ERROR, HASH_ERROR, READ_ERROR, SUCCESS
+from hasher import (
+    FORMAT_ERROR,
+    HASH_ERROR,
+    READ_ERROR,
+    SUCCESS,
+    )
 
 
 STATUS_MSG = '{0}: {1}\n'

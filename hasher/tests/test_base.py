@@ -6,7 +6,11 @@ Created on Feb 8, 2013
 import unittest
 from StringIO import StringIO
 
-from mock import patch, MagicMock, call
+from mock import (
+    patch,
+    MagicMock,
+    call,
+    )
 
 from hasher import (
     FORMAT_ERROR,
@@ -14,7 +18,10 @@ from hasher import (
     READ_ERROR,
     SUCCESS,
     )
-from hasher.hashes import base, md5
+from hasher.hashes import (
+    base,
+    md5,
+    )
 
 
 class TestMD5Hasher(unittest.TestCase):

@@ -19,12 +19,7 @@ Created on Feb 6, 2013
 '''
 from hashlib import sha1
 
-from .base import Hasher
-
-
-def run(args):
-    hasher = SHA1Hasher(args)
-    hasher.run()
+from hasher.hashes.base import Hasher
 
 
 class SHA1Hasher(Hasher):

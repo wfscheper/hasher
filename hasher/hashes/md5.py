@@ -19,7 +19,7 @@ Created on Jan 21, 2013
 '''
 from hashlib import md5
 
-from .base import Hasher
+from hasher.hashes.base import Hasher
 
 
 class MD5Hasher(Hasher):
