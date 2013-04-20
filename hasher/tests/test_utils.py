@@ -29,10 +29,10 @@ class TestCheckRegex(object):
         match = check_re.match(string)
 
         assert match is not None
-        assert match.groups() == (self.hash, None, self.filename)
+        assert match.groups() == (self.hash, ' ', self.filename)
 
     def test_binary_string(self):
-        string = '%s  *%s' % (self.hash, self.filename)
+        string = '%s *%s' % (self.hash, self.filename)
         match = check_re.match(string)
 
         assert match is not None
@@ -59,11 +59,11 @@ class TestCheckRegex(object):
         string = "{hash}  {file}".format(hash=self.hash, file=filename)
         match = check_re.match(string)
         assert match is not None
-        assert match.groups() == (self.hash, None, filename)
+        assert match.groups() == (self.hash, ' ', filename)
 
     def test_filename_with_space(self):
         filename = "filewith space.txt"
         string = "{hash}  {file}".format(hash=self.hash, file=filename)
         match = check_re.match(string)
         assert match is not None
-        assert match.groups() == (self.hash, None, filename)
+        assert match.groups() == (self.hash, ' ', filename)

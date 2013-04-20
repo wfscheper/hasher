@@ -19,6 +19,7 @@ Created on Feb 6, 2013
 '''
 import argparse
 import importlib
+import sys
 
 from .version import __version__
 
@@ -95,6 +96,12 @@ def main():
         version=".".join(map(str, __version__)),
         )
 
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Show debugging statements',
+        )
+
     args = parser.parse_args()
     if args.check and (args.binary and args.text):
         parser.error(
@@ -116,7 +123,10 @@ def main():
                 hasher.check_hash(fname).display(**vars(args))
             else:
                 hasher.generate_hash(fname).display(**vars(args))
-    except:
+    except Exception as e:
+        if args.debug:
+            raise
+        sys.stderr.write(e)
         return 1
     return 0
 

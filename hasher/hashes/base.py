@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import re
 import sys
 
 from hasher import FORMAT_ERROR, HASH_ERROR, READ_ERROR, SUCCESS
 
 
-check_re = re.compile(r'^([a-f0-9]+)  (\*)?(.+)$')
+STATUS_MSG = '{0}: {1}\n'
+check_re = re.compile(r'^([a-f0-9]+) (\*| )(.+)$')
 
 
 class Hasher(object):
@@ -38,9 +40,10 @@ class Hasher(object):
         """
         Calculate a hash value for the data in ``file_object
         """
+        hasher = self.hashlib()
         for chunk in self.iterchunks(file_object):
-            self.hashlib.update(chunk)
-        return self.hashlib.hexdigest()
+            hasher.update(chunk)
+        return hasher.hexdigest()
 
     def check_hash(self, fname):
         """
@@ -53,13 +56,16 @@ class Hasher(object):
         """
         fobj = self._open_file(fname)
 
-        results = CheckHashResult(self.name, fname)
+        results = []
+        format_errors = 0
+        hash_errors = 0
+        read_errors = 0
         for line in fobj:
             # remove any newline characters
             m = check_re.match(line.strip())
             if not m:
                 results.append((None, FORMAT_ERROR))
-                results.format_errors += 1
+                format_errors += 1
                 continue
             hash_value, binary, check_file = m.groups()
 
@@ -71,16 +77,20 @@ class Hasher(object):
             try:
                 check_f = open(check_file, mode)
             except IOError:
-                results.read_errors += 1
-                results.append((fname, READ_ERROR))
+                results.append((check_file, READ_ERROR))
+                read_errors += 1
                 continue
 
             if self.calculate_hash(check_f) == hash_value:
-                results.append((fname, SUCCESS,))
+                results.append((check_file, SUCCESS,))
             else:
-                results.append((fname, HASH_ERROR,))
-                results.hash_errors += 1
-        return results
+                results.append((check_file, HASH_ERROR,))
+                hash_errors += 1
+        return CheckHashResult(self.name, fname, *results, **dict(
+            format_errors=format_errors,
+            hash_errors=hash_errors,
+            read_errors=read_errors,
+            ))
 
     def generate_hash(self, fname):
         """Generate hashes for files"""
@@ -90,15 +100,18 @@ class Hasher(object):
 
     def iterchunks(self, file_object):
         data = file_object.read(self.chunk_size)
-        while data:
+        while data != '':
             yield data
             data = file_object.read(self.chunk_size)
 
 
-class HashResult(list):
+class HashResult(object):
+    """
+    Wrapper class for storing results of hashing operations
+    """
 
-    def __init__(self, name, fname, *args):
-        super(HashResult, self).__init__(args)
+    def __init__(self, name, fname):
+        super(HashResult, self).__init__()
         self.name = name
         self.fname = fname
 
@@ -106,29 +119,55 @@ class HashResult(list):
         raise NotImplementedError()
 
 
+@functools.total_ordering
 class CheckHashResult(HashResult):
+    """
+    Result of checking hashes from a file
+    """
 
     def __init__(self, name, fname, *args, **kwargs):
-        super(CheckHashResult, self).__init__(name, fname, *args)
+        super(CheckHashResult, self).__init__(name, fname)
+        self.results = args
         self.format_errors = kwargs.get('format_errors', 0)
         self.hash_errors = kwargs.get('hash_errors', 0)
         self.read_errors = kwargs.get('read_errors', 0)
+
+    def __eq__(self, other):
+        return (
+            (self.name.lower(), self.fname.lower(), self.results,
+                self.format_errors, self.hash_errors, self.read_errors) ==
+            (other.name.lower(), other.fname.lower(), other.results,
+                other.format_errors, other.hash_errors, other.read_errors)
+            )
+
+    def __lt__(self, other):
+        return (
+            (self.name.lower(), self.fname.lower(), self.results,
+                self.format_errors, self.hash_errors, self.read_errors) <
+            (other.name.lower(), other.fname.lower(), other.results,
+                other.format_errors, other.hash_errors, other.read_errors)
+            )
 
     def display(self, **kwargs):
         status = kwargs.get('status', False)
         quiet = kwargs.get('quiet', False)
         warn = kwargs.get('warn', False)
 
-        for idx, result in enumerate(self):
-            if result[1] == 'FAILED open or read':
+        for idx, result in enumerate(self.results):
+            if result[1] == SUCCESS and not (status or quiet):
+                # display OK if not warn or status
+                sys.stdout.write(STATUS_MSG.format(*result))
+            elif result[1] == READ_ERROR:
+                # display read errors
+                if not status:
+                    sys.stdout.write(STATUS_MSG.format(*result))
                 sys.stderr.write(
                     '{0}: {1}: No such file or directory\n'.format(
                         self.name, result[0]
                         ))
-            if not (status or quiet) and result != (None, FORMAT_ERROR):
-                sys.stdout.write('{0}: {1}\n'.format(*result))
-
-            if warn and result == (None, FORMAT_ERROR):
+            elif result[1] == HASH_ERROR and not status:
+                sys.stdout.write(STATUS_MSG.format(*result))
+            elif result[1] == FORMAT_ERROR and warn:
                 sys.stderr.write(
                     '{0}: {1}: {2}: improperly formatted checksum'
                     ' line\n'.format(
@@ -138,36 +177,63 @@ class CheckHashResult(HashResult):
                         ))
 
         if not status:
-            if warn and self.format_errors:
+            if self.format_errors:
                 sys.stderr.write(
-                    '{0}: WARNING: {1} line{2} is improperly'
+                    '{0}: WARNING: {1} line{2} {3} improperly'
                     ' formatted\n'.format(
                         self.name,
                         self.format_errors,
                         's' if self.format_errors > 1 else '',
+                        'are' if self.format_errors > 1 else 'is',
                         ))
             if self.read_errors:
                 sys.stderr.write(
-                    '{0}: WARNING: {1} listed file{2} could not be read\n'.format(
+                    '{0}: WARNING: {1} listed file{2}'
+                    ' could not be read\n'.format(
                         self.name,
                         self.read_errors,
                         's' if self.read_errors > 1 else '',
                         ))
             if self.hash_errors:
                 sys.stderr.write(
-                    '{0}: WARNING: {1} computed checksum{2} did NOT match\n'.format(
+                    '{0}: WARNING: {1} computed checksum{2}'
+                    ' did NOT match\n'.format(
                         self.name,
                         self.hash_errors,
                         's' if self.hash_errors > 1 else '',
                         ))
 
 
+@functools.total_ordering
 class GenerateHashResult(HashResult):
+    """
+    Result of calculating a hash for a file
+    """
+
+    def __init__(self, name, fname, hash_value):
+        super(GenerateHashResult, self).__init__(name, fname)
+        self.hash = hash_value
+
+    def __eq__(self, other):
+        return (
+            (self.name.lower(), self.fname.lower(), self.hash.lower()) ==
+            (other.name.lower(), other.fname.lower(), other.hash.lower())
+            )
+
+    def __lt__(self, other):
+        return (
+            (self.name.lower(), self.fname.lower(), self.hash.lower()) <
+            (other.name.lower(), other.fname.lower(), other.hash.lower())
+            )
 
     def display(self, **kwargs):
         binary = kwargs.get('binary', False)
 
-        line = '{0} {2}{1}\n'.format(self[0], self[1], '*' if binary else '')
+        line = '{0} {2}{1}\n'.format(
+            self.hash,
+            self.fname,
+            '*' if binary else ' ',
+            )
 
         if '//' in line:
             line = '//' + line.replace('//', '////')

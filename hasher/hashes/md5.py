@@ -26,7 +26,7 @@ class MD5Hasher(Hasher):
 
     def __init__(self):
         super(MD5Hasher, self).__init__()
-        self.hashlib = md5()
+        self.hashlib = md5
         self.name = 'md5sum'
 
 

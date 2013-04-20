@@ -29,13 +29,11 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stdin = MagicMock()
         _sys.stdin.read.side_effect = [self.data, '']
 
-        expected_result = base.GenerateHashResult(
-            'md5sum', '-', self.data_md5)
+        expected_result = base.GenerateHashResult('md5sum', '-', self.data_md5)
         result = self.md5hasher.generate_hash('-')
         self.assertEqual(
             expected_result,
             result,
-            'Expected %s, but got %s' % (expected_result, result),
             )
 
     @patch('__builtin__.open')
@@ -46,19 +44,34 @@ class TestMD5Hasher(unittest.TestCase):
             self.md5hasher.generate_hash('md5sum')
         _open.assert_called_once_with('md5sum')
 
+    @patch('hasher.hashes.base.sys')
+    def test_generate_display_text(self, _sys):
+        _sys.stdout = MagicMock(spec=file)
+
+        base.GenerateHashResult(
+            'md5sum',
+            'foo',
+            self.data_md5,
+            ).display()
+        _sys.stdout.write.assert_called_with(
+            '%s  foo\n' % self.data_md5,
+            )
+
     @patch('__builtin__.open')
     def test_check_data(self, _open):
         _open.side_effect = [
             StringIO(
-                '%s  %s\n' % (self.data_md5, 'md5sum'),
+                '%s  %s\n' % (self.data_md5, 'bar'),
                 ),
-            StringIO(
-                self.data,
-                ),
+            StringIO(self.data),
             ]
 
-        result = self.md5hasher.check_hash('md5sum')
-        expected_result = [('md5sum', SUCCESS,)]
+        result = self.md5hasher.check_hash('foo')
+        expected_result = base.CheckHashResult(
+            'md5sum',
+            'foo',
+            ('bar', SUCCESS),
+            )
         self.assertEqual(expected_result, result)
         self.assertEqual(0, result.format_errors)
         self.assertEqual(0, result.hash_errors)
@@ -68,13 +81,19 @@ class TestMD5Hasher(unittest.TestCase):
     def test_check_readerror(self, _open):
         _open.side_effect = [
             StringIO(
-                '%s  %s\n' % (self.data_md5, 'md5sum'),
+                '%s  %s\n' % (self.data_md5, 'bar'),
                 ),
             IOError(),
             ]
 
-        result = self.md5hasher.check_hash('md5sum')
-        expected_result = [('md5sum', READ_ERROR,)]
+        result = self.md5hasher.check_hash('foo')
+        expected_result = base.CheckHashResult(
+            'md5sum',
+            'foo',
+            ('bar', READ_ERROR),
+            read_errors=1,
+            )
+
         self.assertEqual(expected_result, result)
         self.assertEqual(0, result.format_errors)
         self.assertEqual(0, result.hash_errors)
@@ -83,12 +102,17 @@ class TestMD5Hasher(unittest.TestCase):
     @patch('__builtin__.open')
     def test_check_mismatch(self, _open):
         _open.side_effect = [
-            StringIO('%s  %s\n' % (self.data_md5, 'md5sum')),
-            StringIO(self.data + ' md5sum'),
+            StringIO('%s  %s\n' % (self.data_md5, 'bar')),
+            StringIO(self.data + 'md5sum'),
             ]
 
-        result = self.md5hasher.check_hash('md5sum')
-        expected_result = [('md5sum', HASH_ERROR,)]
+        result = self.md5hasher.check_hash('foo')
+        expected_result = base.CheckHashResult(
+            'md5sum',
+            'foo',
+            ('bar', HASH_ERROR),
+            hash_errors=1,
+            )
         self.assertEqual(expected_result, result)
         self.assertEqual(0, result.format_errors)
         self.assertEqual(1, result.hash_errors)
@@ -97,11 +121,16 @@ class TestMD5Hasher(unittest.TestCase):
     @patch('__builtin__.open')
     def test_check_formaterror(self, _open):
         _open.side_effect = [
-            StringIO('%s +%s\n' % (self.data_md5, 'md5sum')),
+            StringIO('%s +%s\n' % (self.data_md5, 'bar')),
             ]
 
-        result = self.md5hasher.check_hash('md5sum')
-        expected_result = [(None, FORMAT_ERROR)]
+        result = self.md5hasher.check_hash('foo')
+        expected_result = base.CheckHashResult(
+            'md5sum',
+            'foo',
+            (None, FORMAT_ERROR),
+            format_errors=1,
+            )
         self.assertEqual(expected_result, result)
         self.assertEqual(1, result.format_errors)
         self.assertEqual(0, result.hash_errors)
@@ -126,14 +155,18 @@ class TestMD5Hasher(unittest.TestCase):
 
         base.CheckHashResult('md5sum', 'foo', format_errors=1).display()
         self.assertEqual([], _sys.stdout.write.call_args_list)
-        self.assertEqual([], _sys.stderr.write.call_args_list)
+        self.assertEqual([
+            call('md5sum: WARNING: 1 line is improperly formatted\n'),
+            ], _sys.stderr.write.call_args_list)
 
         _sys.stdout = MagicMock(spec=file)
         _sys.stderr = MagicMock(spec=file)
 
         base.CheckHashResult('md5sum', 'foo', format_errors=2).display()
         self.assertEqual([], _sys.stdout.write.call_args_list)
-        self.assertEqual([], _sys.stderr.write.call_args_list)
+        self.assertEqual([
+            call('md5sum: WARNING: 2 lines are improperly formatted\n'),
+            ], _sys.stderr.write.call_args_list)
 
     @patch('hasher.hashes.base.sys')
     def test_checkresult_display_hasherror(self, _sys):
