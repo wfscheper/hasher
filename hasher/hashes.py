@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import functools
+import hashlib
+import os
 import re
 import sys
 
-from hasher import (
-    FORMAT_ERROR,
-    HASH_ERROR,
-    READ_ERROR,
-    SUCCESS,
-    )
 
-
+FORMAT_ERROR = 'MISFORMATTED'
+HASH_ERROR = 'FAILED'
+READ_ERROR = 'FAILED open or read'
+SUCCESS = 'OK'
+EXCLUDES = ('base.py', '__init__.py')
+PATH = os.path.dirname(__file__)
+PYEXT = '.py'
 STATUS_MSG = '{0}: {1}\n'
-check_re = re.compile(r'^([a-f0-9]+) (\*| )(.+)$')
+CHECK_RE = re.compile(r'^([a-f0-9]+) (\*| )(.+)$')
 
 
 class Hasher(object):
@@ -67,7 +69,7 @@ class Hasher(object):
         read_errors = 0
         for line in fobj:
             # remove any newline characters
-            m = check_re.match(line.strip())
+            m = CHECK_RE.match(line.strip())
             if not m:
                 results.append((None, FORMAT_ERROR))
                 format_errors += 1
@@ -152,6 +154,31 @@ class CheckHashResult(HashResult):
             (other.name.lower(), other.fname.lower(), other.results,
                 other.format_errors, other.hash_errors, other.read_errors)
             )
+    def __repr__(self):
+        return (
+            '<{0} ({1}, {2}, {3}, format_errors={4}, hash_errors={5},'
+            ' read_errors={6})'.format(
+                self.__class__.__name__,
+                self.name,
+                self.fname,
+                self.results,
+                self.format_errors,
+                self.hash_errors,
+                self.read_errors,
+                ))
+
+
+    def __str__(self):
+        return (
+            '({0}, {1}, {2}, format_errors={3}, hash_errors={4},'
+            ' read_errors={5})'.format(
+                self.name,
+                self.fname,
+                self.results,
+                self.format_errors,
+                self.hash_errors,
+                self.read_errors,
+                ))
 
     def display(self, **kwargs):
         status = kwargs.get('status', False)
@@ -231,6 +258,17 @@ class GenerateHashResult(HashResult):
             (other.name.lower(), other.fname.lower(), other.hash.lower())
             )
 
+    def __repr__(self):
+        return '<{0} ({1}, {2}, {3})>'.format(
+            self.__class__,
+            self.name,
+            self.fname,
+            self.hash_value,
+            )
+
+    def __str__(self):
+        return (self.name, self.fname, self.hash_value)
+
     def display(self, **kwargs):
         binary = kwargs.get('binary', False)
 
@@ -243,3 +281,11 @@ class GenerateHashResult(HashResult):
         if '//' in line:
             line = '//' + line.replace('//', '////')
         sys.stdout.write(line)
+
+
+def hasher_factory(algorithm):
+    klass = type("{0}Hasher".format(algorithm.upper()), (Hasher,), dict(
+        name='{0}hash'.format(algorithm),
+        hashlib=getattr(hashlib, algorithm),
+        ))
+    return klass()

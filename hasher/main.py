@@ -20,13 +20,7 @@ Created on Feb 6, 2013
 import sys
 
 from hasher.parser import parser
-from hasher import hashes
-
-
-def hasher_factory(hash_name):
-    module = getattr(hashes, hash_name)
-    klass = getattr(module, '{0}Hasher'.format(hash_name.upper()))
-    return klass()
+from hasher.hashes import hasher_factory
 
 
 def main(argv=None):
@@ -42,7 +36,7 @@ def main(argv=None):
             'the --warn, --status, and --quiet options are meaningful'
             ' only when verifying checksums')
 
-    hasher = hasher_factory(parser.prog.rpartition('sum')[0])
+    hasher = hasher_factory(parser.prog.rpartition('hash')[0])
 
     try:
         for fname in args.file:
