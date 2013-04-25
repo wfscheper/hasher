@@ -1,7 +1,22 @@
+# Copyright 2013 Walter Scheper
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import hashlib
 import os
 import sys
 
-from setuptools import setup, find_packages
+from setuptools import setup
 from setuptools.command.test import test as TestCommand
 
 from hasher.version import __version__
@@ -25,11 +40,6 @@ def read(fname):
 
 requirements = []
 
-hashers = []
-for fname in os.listdir('hasher/hashes'):
-    if fname not in ['__init__.py', 'base.py'] and not fname.endswith('.pyc'):
-        hashers.append(fname.strip('.py'))
-
 setup(
     name="hasher",
     version=".".join(map(str, __version__)),
@@ -39,11 +49,13 @@ setup(
     license='MIT',
     author='Walter Scheper',
     author_email='walter.scheper@gmail.com',
-    packages=find_packages(exclude=['tests']),
+    packages=[
+        'hasher',
+        ],
     include_package_data=True,
     entry_points={
-        'console_scripts': ['{0}sum = hasher.main:main'.format(h)
-                            for h in hashers],
+        'console_scripts': ['{0}hash = hasher.main:main'.format(h)
+                            for h in hashlib.algorithms],
     },
     classifiers=[
         'Development Status :: 3 - Alpha',
@@ -55,6 +67,7 @@ setup(
         'Programming Language :: Python',
     ],
     install_requires=requirements,
-    tests_require=['pytest'],
+    test_suite='hasher',
+    tests_require=['pytest', 'mock'],
     cmdclass={'test': PyTest},
-)
+    )
