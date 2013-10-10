@@ -14,9 +14,14 @@
 
 import functools
 import hashlib
+import logging
 import os
 import re
 import sys
+
+from cliff import command
+
+from hasher import __version__
 
 
 FORMAT_ERROR = 'MISFORMATTED'
@@ -26,24 +31,23 @@ SUCCESS = 'OK'
 EXCLUDES = ('base.py', '__init__.py')
 PATH = os.path.dirname(__file__)
 PYEXT = '.py'
-STATUS_MSG = '{0}: {1}\n'
+STATUS_MSG = 'hasher {0}: {1}\n'
 CHECK_RE = re.compile(r'^([a-f0-9]+) (\*| )(.+)$')
 
 
-class Hasher(object):
+class Hasher(command.Command):
     """
     Base class for various sub-classes that implement specific hashing
     algorithms.
     """
-    def __init__(self):
+
+    log = logging.getLogger(__name__)
+
+    def __init__(self, *args, **kwargs):
+        super(Hasher, self).__init__(*args, **kwargs)
         self.chunk_size = 64 * 2048
 
-    def _open_file(self, fname):
-        if fname == '-':
-            return sys.stdin
-        return open(fname)
-
-    def calculate_hash(self, file_object):
+    def _calculate_hash(self, file_object):
         """
         Calculate a hash value for the data in ``file_object
         """
@@ -51,6 +55,11 @@ class Hasher(object):
         for chunk in self.iterchunks(file_object):
             hasher.update(chunk)
         return hasher.hexdigest()
+
+    def _open_file(self, fname):
+        if fname == '-':
+            return sys.stdin
+        return open(fname)
 
     def check_hash(self, fname):
         """
@@ -88,7 +97,7 @@ class Hasher(object):
                 read_errors += 1
                 continue
 
-            if self.calculate_hash(check_f) == hash_value:
+            if self._calculate_hash(check_f) == hash_value:
                 results.append((check_file, SUCCESS,))
             else:
                 results.append((check_file, HASH_ERROR,))
@@ -102,14 +111,100 @@ class Hasher(object):
     def generate_hash(self, fname):
         """Generate hashes for files"""
         fobj = self._open_file(fname)
-        hash_value = self.calculate_hash(fobj)
+        hash_value = self._calculate_hash(fobj)
         return GenerateHashResult(self.name, fname, hash_value)
+
+    def get_parser(self, prog_name):
+        parser = super(Hasher, self).get_parser(prog_name)
+        parser.add_argument(
+            "file",
+            nargs="*",
+            default="-",
+            metavar="FILE",
+            )
+
+        parser.add_argument(
+            "-c", "--check",
+            action="store_true",
+            help="read MD5 sums from the FILEs and check them",
+            )
+
+        parser.add_argument(
+            "-b", "--binary",
+            action="store_true",
+            help="read in binary mode",
+            )
+
+        parser.add_argument(
+            "-t", "--text",
+            action="store_true",
+            help="read in text mode (default)",
+            )
+
+        parser.add_argument(
+            "--quiet",
+            action="store_true",
+            help="don't print OK for each successfully verified file",
+            )
+
+        parser.add_argument(
+            "--status",
+            action="store_true",
+            help="don't output anything, status code shows success",
+            )
+
+        parser.add_argument(
+            "-w", "--warn",
+            action="store_true",
+            help="warn about improperly formatted checksum lines",
+            )
+
+        parser.add_argument(
+            "--strict",
+            action="store_true",
+            help="with --check, exit non-zero for any invalid input",
+            )
+
+        parser.add_argument(
+            "--version",
+            action="version",
+            version="{0}.{1}.{2}{3}".format(*__version__),
+            )
+
+        parser.add_argument(
+            '--debug',
+            action='store_true',
+            help='Show debugging statements',
+            )
+
+        return parser
 
     def iterchunks(self, file_object):
         data = file_object.read(self.chunk_size)
         while data != '':
             yield data
             data = file_object.read(self.chunk_size)
+
+    def take_action(self, parsed_args):
+        if parsed_args.check and (parsed_args.binary and parsed_args.text):
+            self.log.error(
+                'the --binary and --text options are meaningless when'
+                ' verifying checksums')
+
+        if not parsed_args.check and (
+                parsed_args.warn or
+                parsed_args.status or
+                parsed_args.quiet or
+                parsed_args.strict):
+            self.log.error(
+                'the --warn, --status, and --quiet options are meaningful'
+                ' only when verifying checksums')
+
+        for fname in parsed_args.file:
+            if parsed_args.check:
+                self.check_hash(fname).display(**vars(parsed_args))
+            else:
+                self.generate_hash(fname).display(**vars(parsed_args))
 
 
 class HashResult(object):
@@ -154,6 +249,7 @@ class CheckHashResult(HashResult):
             (other.name.lower(), other.fname.lower(), other.results,
                 other.format_errors, other.hash_errors, other.read_errors)
             )
+
     def __repr__(self):
         return (
             '<{0} ({1}, {2}, {3}, format_errors={4}, hash_errors={5},'
@@ -166,7 +262,6 @@ class CheckHashResult(HashResult):
                 self.hash_errors,
                 self.read_errors,
                 ))
-
 
     def __str__(self):
         return (
@@ -194,14 +289,14 @@ class CheckHashResult(HashResult):
                 if not status:
                     sys.stdout.write(STATUS_MSG.format(*result))
                 sys.stderr.write(
-                    '{0}: {1}: No such file or directory\n'.format(
+                    'hasher {0}: {1}: No such file or directory\n'.format(
                         self.name, result[0]
                         ))
             elif result[1] == HASH_ERROR and not status:
                 sys.stdout.write(STATUS_MSG.format(*result))
             elif result[1] == FORMAT_ERROR and warn:
                 sys.stderr.write(
-                    '{0}: {1}: {2}: improperly formatted checksum'
+                    'hasher {0}: {1}: {2}: improperly formatted checksum'
                     ' line\n'.format(
                         self.name,
                         self.fname,
@@ -211,7 +306,7 @@ class CheckHashResult(HashResult):
         if not status:
             if self.format_errors:
                 sys.stderr.write(
-                    '{0}: WARNING: {1} line{2} {3} improperly'
+                    'hasher {0}: WARNING: {1} line{2} {3} improperly'
                     ' formatted\n'.format(
                         self.name,
                         self.format_errors,
@@ -220,7 +315,7 @@ class CheckHashResult(HashResult):
                         ))
             if self.read_errors:
                 sys.stderr.write(
-                    '{0}: WARNING: {1} listed file{2}'
+                    'hasher {0}: WARNING: {1} listed file{2}'
                     ' could not be read\n'.format(
                         self.name,
                         self.read_errors,
@@ -228,7 +323,7 @@ class CheckHashResult(HashResult):
                         ))
             if self.hash_errors:
                 sys.stderr.write(
-                    '{0}: WARNING: {1} computed checksum{2}'
+                    'hasher {0}: WARNING: {1} computed checksum{2}'
                     ' did NOT match\n'.format(
                         self.name,
                         self.hash_errors,
@@ -283,9 +378,16 @@ class GenerateHashResult(HashResult):
         sys.stdout.write(line)
 
 
-def hasher_factory(algorithm):
-    klass = type("{0}Hasher".format(algorithm.upper()), (Hasher,), dict(
-        name='{0}hash'.format(algorithm),
-        hashlib=getattr(hashlib, algorithm),
-        ))
-    return klass()
+class MD5Hasher(Hasher):
+    name = 'md5'
+    hashlib = hashlib.md5
+
+
+class SHA1Hasher(Hasher):
+    name = 'sha1'
+    hashlib = hashlib.sha1
+
+
+class SHA256Hasher(Hasher):
+    name = 'sha256'
+    hashlib = hashlib.sha256

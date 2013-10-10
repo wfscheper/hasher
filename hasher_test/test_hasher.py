@@ -14,6 +14,7 @@ from mock import (
     )
 import pytest
 
+from hasher import app
 from hasher import hashes
 from hasher.hashes import (
     CHECK_RE,
@@ -78,16 +79,17 @@ class TestCheckRegex(object):
 
 class TestMD5Hasher(unittest.TestCase):
     def setUp(self):
+        self.app = app.HasherApp()
         self.data = 'a string of data to hash'
         self.data_md5 = '719231ebf10a82f0b9c29c26210a6ec3'
-        self.md5hasher = hashes.hasher_factory('md5')
+        self.md5hasher = hashes.MD5Hasher(self.app, None)
 
     @patch('hasher.hashes.sys')
     def test_basic_hash(self, _sys):
         _sys.stdin = MagicMock()
         _sys.stdin.read.side_effect = [self.data, '']
 
-        expected_result = hashes.GenerateHashResult('md5hash', '-', self.data_md5)
+        expected_result = hashes.GenerateHashResult('md5', '-', self.data_md5)
         result = self.md5hasher.generate_hash('-')
         assert expected_result == result
 
@@ -96,15 +98,15 @@ class TestMD5Hasher(unittest.TestCase):
         _open.side_effect = IOError()
 
         with pytest.raises(IOError):
-            self.md5hasher.generate_hash('md5hash')
-        _open.assert_called_once_with('md5hash')
+            self.md5hasher.generate_hash('md5')
+        _open.assert_called_once_with('md5')
 
     @patch('hasher.hashes.sys')
     def test_generate_display_text(self, _sys):
         _sys.stdout = MagicMock(spec=file)
 
         hashes.GenerateHashResult(
-            'md5hash',
+            'md5',
             'foo',
             self.data_md5,
             ).display()
@@ -123,7 +125,7 @@ class TestMD5Hasher(unittest.TestCase):
 
         result = self.md5hasher.check_hash('foo')
         expected_result = hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', SUCCESS),
             )
@@ -143,7 +145,7 @@ class TestMD5Hasher(unittest.TestCase):
 
         result = self.md5hasher.check_hash('foo')
         expected_result = hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', READ_ERROR),
             read_errors=1,
@@ -158,12 +160,12 @@ class TestMD5Hasher(unittest.TestCase):
     def test_check_mismatch(self, _open):
         _open.side_effect = [
             StringIO('%s  %s\n' % (self.data_md5, 'bar')),
-            StringIO(self.data + 'md5hash'),
+            StringIO(self.data + 'md5'),
             ]
 
         result = self.md5hasher.check_hash('foo')
         expected_result = hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', HASH_ERROR),
             hash_errors=1,
@@ -181,7 +183,7 @@ class TestMD5Hasher(unittest.TestCase):
 
         result = self.md5hasher.check_hash('foo')
         expected_result = hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             (None, FORMAT_ERROR),
             format_errors=1,
@@ -196,9 +198,9 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stdout = MagicMock(spec=file)
         _sys.stderr = MagicMock(spec=file)
 
-        hashes.CheckHashResult('md5hash', 'foo', ('bar', SUCCESS)).display()
+        hashes.CheckHashResult('md5', 'foo', ('bar', SUCCESS)).display()
         expected_stdout_calls = [
-            call('bar: OK\n'),
+            call('hasher bar: OK\n'),
             ]
         assert expected_stdout_calls == _sys.stdout.write.call_args_list
 
@@ -207,22 +209,22 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stdout = MagicMock(spec=file)
         _sys.stderr = MagicMock(spec=file)
 
-        hashes.CheckHashResult('md5hash', 'foo', format_errors=1).display()
+        hashes.CheckHashResult('md5', 'foo', format_errors=1).display()
         assert [] == _sys.stdout.write.call_args_list
 
         expected_stderr_calls = [
-            call('md5hash: WARNING: 1 line is improperly formatted\n'),
+            call('hasher md5: WARNING: 1 line is improperly formatted\n'),
             ]
         assert expected_stderr_calls == _sys.stderr.write.call_args_list
 
         _sys.stdout = MagicMock(spec=file)
         _sys.stderr = MagicMock(spec=file)
 
-        hashes.CheckHashResult('md5hash', 'foo', format_errors=2).display()
+        hashes.CheckHashResult('md5', 'foo', format_errors=2).display()
         assert [] == _sys.stdout.write.call_args_list
 
         expected_stderr_calls = [
-            call('md5hash: WARNING: 2 lines are improperly formatted\n'),
+            call('hasher md5: WARNING: 2 lines are improperly formatted\n'),
             ]
         assert expected_stderr_calls == _sys.stderr.write.call_args_list
 
@@ -232,19 +234,19 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stderr = MagicMock(spec=file)
 
         hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', HASH_ERROR),
             hash_errors=1,
             ).display()
 
         expected_stdout_calls = [
-            call('bar: FAILED\n'),
+            call('hasher bar: FAILED\n'),
             ]
         assert expected_stdout_calls == _sys.stdout.write.call_args_list
 
         expected_stderr_calls = [
-            call('md5hash: WARNING: 1 computed checksum did NOT match\n'),
+            call('hasher md5: WARNING: 1 computed checksum did NOT match\n'),
             ]
         assert expected_stderr_calls ==  _sys.stderr.write.call_args_list
 
@@ -252,7 +254,7 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stderr = MagicMock(spec=file)
 
         hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', HASH_ERROR),
             ('baz', HASH_ERROR),
@@ -260,13 +262,13 @@ class TestMD5Hasher(unittest.TestCase):
             ).display()
 
         expected_stdout_calls = [
-            call('bar: FAILED\n'),
-            call('baz: FAILED\n'),
+            call('hasher bar: FAILED\n'),
+            call('hasher baz: FAILED\n'),
             ]
         assert expected_stdout_calls ==  _sys.stdout.write.call_args_list
 
         expected_stderr_calls = [
-            call('md5hash: WARNING: 2 computed checksums did NOT match\n'),
+            call('hasher md5: WARNING: 2 computed checksums did NOT match\n'),
             ]
         assert expected_stderr_calls == _sys.stderr.write.call_args_list
 
@@ -276,20 +278,20 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stderr = MagicMock(spec=file)
 
         hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', READ_ERROR),
             read_errors=1,
             ).display()
 
         expected_stdout_calls = [
-            call('bar: FAILED open or read\n'),
+            call('hasher bar: FAILED open or read\n'),
             ]
         assert expected_stdout_calls == _sys.stdout.write.call_args_list
 
         expected_stderr_calls = [
-            call('md5hash: bar: No such file or directory\n'),
-            call('md5hash: WARNING: 1 listed file could not be read\n'),
+            call('hasher md5: bar: No such file or directory\n'),
+            call('hasher md5: WARNING: 1 listed file could not be read\n'),
             ]
         assert expected_stderr_calls == _sys.stderr.write.call_args_list
 
@@ -300,7 +302,7 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stderr = MagicMock(spec=file)
 
         hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', READ_ERROR),
             ('baz', READ_ERROR),
@@ -308,15 +310,15 @@ class TestMD5Hasher(unittest.TestCase):
             ).display()
 
         expected_stdout_calls = [
-            call('bar: FAILED open or read\n'),
-            call('baz: FAILED open or read\n'),
+            call('hasher bar: FAILED open or read\n'),
+            call('hasher baz: FAILED open or read\n'),
             ]
         assert expected_stdout_calls == _sys.stdout.write.call_args_list
 
         expected_stderr_calls = [
-            call('md5hash: bar: No such file or directory\n'),
-            call('md5hash: baz: No such file or directory\n'),
-            call('md5hash: WARNING: 2 listed files could not be read\n'),
+            call('hasher md5: bar: No such file or directory\n'),
+            call('hasher md5: baz: No such file or directory\n'),
+            call('hasher md5: WARNING: 2 listed files could not be read\n'),
             ]
         assert expected_stderr_calls == _sys.stderr.write.call_args_list
 
@@ -326,7 +328,7 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stderr = MagicMock(spec=file)
 
         hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', SUCCESS),
             ).display(status=True)
@@ -340,7 +342,7 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stderr = MagicMock(spec=file)
 
         hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', SUCCESS),
             hash_errors=1,
@@ -355,7 +357,7 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stderr = MagicMock(spec=file)
 
         hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', READ_ERROR),
             read_errors=1,
@@ -364,7 +366,7 @@ class TestMD5Hasher(unittest.TestCase):
         assert [] == _sys.stdout.write.call_args_list
 
         expected_stderr_calls = [
-            call('md5hash: bar: No such file or directory\n'),
+            call('hasher md5: bar: No such file or directory\n'),
             ]
         assert expected_stderr_calls == _sys.stderr.write.call_args_list
 
@@ -378,13 +380,13 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stderr = MagicMock(spec=file)
 
         hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', SUCCESS),
             ).display(warn=True)
 
         expected_stdout_calls = [
-            call('bar: OK\n'),
+            call('hasher bar: OK\n'),
             ]
         assert expected_stdout_calls == _sys.stdout.write.call_args_list
         assert [] == _sys.stderr.write.call_args_list
@@ -395,7 +397,7 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stderr = MagicMock(spec=file)
 
         hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', SUCCESS),
             (None, FORMAT_ERROR),
@@ -403,13 +405,13 @@ class TestMD5Hasher(unittest.TestCase):
             ).display(warn=True)
 
         expected_stdout_calls = [
-            call('bar: OK\n'),
+            call('hasher bar: OK\n'),
             ]
         assert expected_stdout_calls == _sys.stdout.write.call_args_list
 
         expected_stderr_calls = [
-            call('md5hash: foo: 2: improperly formatted checksum line\n'),
-            call('md5hash: WARNING: 1 line is improperly formatted\n'),
+            call('hasher md5: foo: 2: improperly formatted checksum line\n'),
+            call('hasher md5: WARNING: 1 line is improperly formatted\n'),
             ]
         assert expected_stderr_calls == _sys.stderr.write.call_args_list
 
@@ -419,7 +421,7 @@ class TestMD5Hasher(unittest.TestCase):
         _sys.stderr = MagicMock(spec=file)
 
         hashes.CheckHashResult(
-            'md5hash',
+            'md5',
             'foo',
             ('bar', SUCCESS),
             ).display(quiet=True)
