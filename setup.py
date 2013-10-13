@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
 import os
 import sys
 
@@ -58,6 +57,8 @@ setup(
             ],
         'hasher': [
             'md5 = hasher.hashes:MD5Hasher',
+            'sha1 = hasher.hashes:SHA1Hasher',
+            'sha256 = hasher.hashes:SHA256Hasher',
             ],
         },
     classifiers=[
