@@ -13,11 +13,13 @@
 # limitations under the License.
 
 
-from cliff import app
-from cliff import commandmanager
-
-from hasher import __version__
+import argparse
 import logging
+
+from cliff import app, commandmanager
+from cliff.help import HelpAction
+
+from . import __version__
 
 
 class HasherApp(app.App):
@@ -44,3 +46,57 @@ class HasherApp(app.App):
         self.log.debug('clean_up %s', cmd.__class__.__name__)
         if err:
             self.log.debug('got an error: %s', err)
+
+    def build_option_parser(self, description, version,
+                            argparse_kwargs=None):
+        """Return an argparse option parser for this application.
+
+        Subclasses may override this method to extend
+        the parser with more global options.
+
+        :param description: full description of the application
+        :paramtype description: str
+        :param version: version number for the application
+        :paramtype version: str
+        :param argparse_kwargs: extra keyword argument passed to the
+                                ArgumentParser constructor
+        :paramtype extra_kwargs: dict
+        """
+        argparse_kwargs = argparse_kwargs or {}
+        parser = argparse.ArgumentParser(
+            description=description,
+            add_help=False,
+            **argparse_kwargs
+        )
+        parser.add_argument(
+            '--version',
+            action='version',
+            version='%(prog)s {0}'.format(version),
+        )
+        parser.add_argument(
+            '-v', '--verbose',
+            action='count',
+            dest='verbose_level',
+            default=self.DEFAULT_VERBOSE_LEVEL,
+            help='Increase verbosity of output. Can be repeated.',
+        )
+        parser.add_argument(
+            '--log-file',
+            action='store',
+            default=None,
+            help='Specify a file to log output. Disabled by default.',
+        )
+        parser.add_argument(
+            '-h', '--help',
+            action=HelpAction,
+            nargs=0,
+            default=self,  # tricky
+            help="show this help message and exit",
+        )
+        parser.add_argument(
+            '--debug',
+            default=False,
+            action='store_true',
+            help='show tracebacks on errors',
+        )
+        return parser

@@ -19,7 +19,7 @@ Created on Feb 6, 2013
 '''
 import sys
 
-from hasher import app
+from . import app
 
 
 def main(argv=None):
