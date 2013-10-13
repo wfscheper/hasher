@@ -241,10 +241,12 @@ class MD5Hasher(Hasher):
 
 
 class SHA1Hasher(Hasher):
+    CHECK_RE = re.compile(r'^([a-f0-9]{40}) (\*| )(.+)$')
     name = 'sha1'
     hashlib = hashlib.sha1
 
 
 class SHA256Hasher(Hasher):
+    CHECK_RE = re.compile(r'^([a-f0-9]{64}) (\*| )(.+)$')
     name = 'sha256'
     hashlib = hashlib.sha256
