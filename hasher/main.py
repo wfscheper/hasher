@@ -19,39 +19,18 @@ Created on Feb 6, 2013
 '''
 import sys
 
-from hasher.parser import parser
-from hasher.hashes import hasher_factory
+from . import app
 
 
 def main(argv=None):
-    args = parser.parse_args(argv)
-    if args.check and (args.binary and args.text):
-        parser.error(
-            'the --binary and --text options are meaningless when verifying'
-            ' checksums')
-
-    if not args.check and (
-            args.warn or args.status or args.quiet or args.strict):
-        parser.error(
-            'the --warn, --status, and --quiet options are meaningful'
-            ' only when verifying checksums')
-
-    hasher = hasher_factory(parser.prog.rpartition('hash')[0])
-
+    if argv is None:
+        argv = sys.argv[1:]
+    hasher = app.HasherApp()
     try:
-        for fname in args.file:
-            if args.check:
-                hasher.check_hash(fname).display(**vars(args))
-            else:
-                hasher.generate_hash(fname).display(**vars(args))
+        return hasher.run(argv)
     except KeyboardInterrupt:
         return 130
-    except Exception as e:
-        if args.debug:
-            raise
-        sys.stderr.write(e.args[0] + '\n')
-        return 1
-    return 0
+
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main(sys.argv[1:]))

@@ -19,7 +19,7 @@ import sys
 from setuptools import setup
 from setuptools.command.test import test as TestCommand
 
-from hasher.version import __version__
+from hasher import __version__
 
 
 class PyTest(TestCommand):
@@ -42,7 +42,7 @@ requirements = []
 
 setup(
     name="hasher",
-    version=".".join(map(str, __version__)),
+    version="{0}.{1}.{2}{3}".format(*__version__),
     description="Provide multiple hashing algorithms from a single code base",
     long_description=read('README.rst'),
     url='https://github.com/wfscheper/hasher.git',
@@ -53,8 +53,12 @@ setup(
         'hasher',
         ],
     entry_points={
-        'console_scripts': ['{0}hash = hasher.main:main'.format(h)
-                            for h in hashlib.algorithms],
+        'console_scripts': [
+            'hasher = hasher.main:main',
+            ],
+        'hasher': [
+            'md5 = hasher.hashes:MD5Hasher',
+            ],
         },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
