@@ -12,91 +12,84 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import argparse
+import functools
 import logging
 
-from cliff import app, commandmanager
-from cliff.help import HelpAction
+import click
 
-from . import __version__
+from .hashes import MD5Hasher
+
+log = logging.getLogger(__name__)
 
 
-class HasherApp(app.App):
-    """
-    Hasher App
-    """
+class AttrDict:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
 
-    log = logging.getLogger(__name__)
 
-    def __init__(self):
-        super(HasherApp, self).__init__(
-            description='',
-            version='{0}.{1}.{2}{3}'.format(*__version__),
-            command_manager=commandmanager.CommandManager('hasher'),
-            )
+@click.group()
+@click.version_option()
+@click.option("-v", "--verbose", count=True, default=0, help="Increase verbosity of output. Can be repeated.")
+@click.option(
+    "--log-file",
+    default=None,
+    type=click.Path(dir_okay=False, writable=True, resolve_path=True),
+    help="Specify a file to log output. Disabled by default.",
+)
+@click.option("--debug/--no-debug", default=False, help="Show tracebacks on errors")
+@click.pass_context
+def hasher(ctx, verbose, log_file, debug):
+    ctx.ensure_object(dict)
+    log.debug("setting debug mode to '%s'", str(debug))
+    ctx.obj["DEBUG"] = debug
+    if verbose == 0:
+        log_level = logging.WARN
+    elif verbose == 1:
+        log_level = logging.INFO
+    else:
+        log_level = logging.DEBUG
+    log_config = dict(level=log_level)
+    if log_file is not None:
+        log_config["filename"] = log_file
+    logging.basicConfig(**log_config)
 
-    def initialize_app(self, argv):
-        self.log.debug('Initialize app')
 
-    def prepare_to_run_command(self, cmd):
-        self.log.debug('prepare_to_run_command %s', cmd.__class__.__name__)
+hasher_options = [
+    (("-c", "--check"), dict(is_flag=True, help="read hashes from FILEs and check them")),
+    (("-b", "--binary", "mode"), dict(flag_value="binary", help="read in binary mode")),
+    (("-t", "--text", "mode"), dict(flag_value="text", default=True, help="read in text mode (default)")),
+    (("--quiet",), dict(is_flag=True, help="don't print OK for each successfully verified file")),
+    (("--status",), dict(is_flag=True, help="don't output anything, status code shows success")),
+    (("-w", "--warn"), dict(is_flag=True, help="warn about improperly formatted checksum lines")),
+    (("--strict",), dict(is_flag=True, help="with --check, exit non-zero for any invalid input")),
+]
 
-    def clean_up(self, cmd, result, err):
-        self.log.debug('clean_up %s', cmd.__class__.__name__)
-        if err:
-            self.log.debug('got an error: %s', err)
+hasher_arguments = [(("files",), dict(nargs=-1, type=click.Path(exists=True, dir_okay=False, resolve_path=True, allow_dash=True)))]
 
-    def build_option_parser(self, description, version,
-                            argparse_kwargs=None):
-        """Return an argparse option parser for this application.
 
-        Subclasses may override this method to extend
-        the parser with more global options.
+@click.pass_context
+def md5(ctx, files, check, mode, quiet, status, warn, strict):
+    _hasher(MD5Hasher, files, check, mode, quiet, status, warn, strict)
 
-        :param description: full description of the application
-        :paramtype description: str
-        :param version: version number for the application
-        :paramtype version: str
-        :param argparse_kwargs: extra keyword argument passed to the
-                                ArgumentParser constructor
-        :paramtype extra_kwargs: dict
-        """
-        argparse_kwargs = argparse_kwargs or {}
-        parser = argparse.ArgumentParser(
-            description=description,
-            add_help=False,
-            **argparse_kwargs
-        )
-        parser.add_argument(
-            '--version',
-            action='version',
-            version='%(prog)s {0}'.format(version),
-        )
-        parser.add_argument(
-            '-v', '--verbose',
-            action='count',
-            dest='verbose_level',
-            default=self.DEFAULT_VERBOSE_LEVEL,
-            help='Increase verbosity of output. Can be repeated.',
-        )
-        parser.add_argument(
-            '--log-file',
-            action='store',
-            default=None,
-            help='Specify a file to log output. Disabled by default.',
-        )
-        parser.add_argument(
-            '-h', '--help',
-            action=HelpAction,
-            nargs=0,
-            default=self,  # tricky
-            help="show this help message and exit",
-        )
-        parser.add_argument(
-            '--debug',
-            default=False,
-            action='store_true',
-            help='show tracebacks on errors',
-        )
-        return parser
+
+def _hasher(klass, files, check, mode, quiet, status, warn, strict):
+    args = AttrDict(
+        files=files,
+        check=check,
+        binary=(mode == "binary"),
+        text=(mode == "text"),
+        quiet=quiet,
+        status=status,
+        warn=warn,
+        strict=strict,
+    )
+    hasher = klass(click.echo, functools.partial(click.echo, error=True))
+    hasher.take_action(args)
+
+
+for args, kwargs in hasher_arguments:
+    md5 = click.argument(*args, **kwargs)(md5)
+
+for args, kwargs in hasher_options:
+    md5 = click.option(*args, **kwargs)(md5)
+md5 = hasher.command()(md5)
