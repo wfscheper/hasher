@@ -1,0 +1,39 @@
+language: python
+
+stages:
+- linting
+- test
+
+cache:
+  pip: true
+  directories:
+  - "$HOME/.cache/pypoetry"
+
+install:
+- pip install pip -U
+- curl -fsS -o get-poetry.py https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py
+- python get-poetry.py --preview -y
+- source $HOME/.poetry/env
+- poetry install -v
+
+script:
+- poetry run pytest --cov-report xml --cov-report term-missing --cov-append --cov hasher tests/
+
+after_success:
+- codecov
+
+jobs:
+  include:
+  - python: "2.7"
+  - python: "3.4"
+  - python: "3.5"
+  - python: "3.6"
+  - python: "3.7"
+
+  - stage: linting
+    python: "3.6"
+    script:
+    - poetry check
+    - poetry run flake8 hasher/ tests/
+    - poetry run isort --verbose --check-only --diff --recursive hasher/ tests/
+    - poetry run black --check --diff hasher/ tests/
