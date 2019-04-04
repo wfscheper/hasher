@@ -12,25 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
-Created on Feb 6, 2013
+from .app import hasher
 
-@author: wscheper
-'''
-import sys
-
-from . import app
-
-
-def main(argv=None):
-    if argv is None:
-        argv = sys.argv[1:]
-    hasher = app.HasherApp()
-    try:
-        return hasher.run(argv)
-    except KeyboardInterrupt:
-        return 130
-
-
-if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+if __name__ == "__main__":
+    hasher()
