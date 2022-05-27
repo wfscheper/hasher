@@ -56,7 +56,7 @@ class TestMD5Hasher:
         md5hasher.generate_hash("foo", args)
 
         _open.assert_called_once_with("foo", "r")
-        md5hasher.stdout.assert_called_with("%s  foo\n" % self.data_md5)
+        md5hasher.stdout.assert_called_with("%s  foo" % self.data_md5)
 
     def test_generate_display_text_binary(self, mocker, md5hasher, args):
         _open = mocker.patch(
@@ -67,7 +67,7 @@ class TestMD5Hasher:
         md5hasher.generate_hash("foo", args)
 
         _open.assert_called_once_with("foo", "rb")
-        md5hasher.stdout.assert_called_with("%s *foo\n" % self.data_md5)
+        md5hasher.stdout.assert_called_with("%s *foo" % self.data_md5)
 
     def test_checkresult_display(self, mocker, md5hasher, args):
         _open = mocker.patch("hasher.hashes.open", mocker.mock_open())
@@ -80,8 +80,8 @@ class TestMD5Hasher:
         rc = md5hasher.check_hash("foo", args)
 
         expected_stdout_calls = [
-            mocker.call("AUTHORS: OK\n"),
-            mocker.call("README.rst: OK\n"),
+            mocker.call("AUTHORS: OK"),
+            mocker.call("README.rst: OK"),
         ]
         assert expected_stdout_calls == md5hasher.stdout.call_args_list
         assert rc == 0
@@ -103,7 +103,7 @@ class TestMD5Hasher:
         assert [] == md5hasher.stdout.call_args_list
 
         expected_stderr_calls = [
-            mocker.call("hasher md5: WARNING: 5 lines are improperly formatted\n")
+            mocker.call("hasher md5: WARNING: 5 lines are improperly formatted")
         ]
         assert expected_stderr_calls == md5hasher.stderr.call_args_list
         assert rc == 1
@@ -118,13 +118,13 @@ class TestMD5Hasher:
 
         rc = md5hasher.check_hash("foo", args)
         expected_stdout_calls = [
-            mocker.call("AUTHORS: FAILED\n"),
-            mocker.call("README.rst: OK\n"),
+            mocker.call("AUTHORS: FAILED"),
+            mocker.call("README.rst: OK"),
         ]
         assert expected_stdout_calls == md5hasher.stdout.call_args_list
 
         expected_stderr_calls = [
-            mocker.call("hasher md5: WARNING: 1 computed checksum did NOT match\n")
+            mocker.call("hasher md5: WARNING: 1 computed checksum did NOT match")
         ]
         assert expected_stderr_calls == md5hasher.stderr.call_args_list
         assert rc == 1
@@ -139,13 +139,13 @@ class TestMD5Hasher:
 
         rc = md5hasher.check_hash("foo", args)
         expected_stdout_calls = [
-            mocker.call("AUTHORS: FAILED\n"),
-            mocker.call("README.rst: FAILED\n"),
+            mocker.call("AUTHORS: FAILED"),
+            mocker.call("README.rst: FAILED"),
         ]
         assert expected_stdout_calls == md5hasher.stdout.call_args_list
 
         expected_stderr_calls = [
-            mocker.call("hasher md5: WARNING: 2 computed checksums did NOT match\n")
+            mocker.call("hasher md5: WARNING: 2 computed checksums did NOT match")
         ]
         assert expected_stderr_calls == md5hasher.stderr.call_args_list
         assert rc == 1
@@ -161,14 +161,14 @@ class TestMD5Hasher:
         rc = md5hasher.check_hash("foo", args)
 
         expected_stdout_calls = [
-            mocker.call("AUTHORS: FAILED open or read\n"),
-            mocker.call("README.rst: OK\n"),
+            mocker.call("AUTHORS: FAILED open or read"),
+            mocker.call("README.rst: OK"),
         ]
         assert expected_stdout_calls == md5hasher.stdout.call_args_list
 
         expected_stderr_calls = [
-            mocker.call("hasher md5: AUTHORS: No such file or directory\n"),
-            mocker.call("hasher md5: WARNING: 1 listed file could not be read\n"),
+            mocker.call("hasher md5: AUTHORS: No such file or directory"),
+            mocker.call("hasher md5: WARNING: 1 listed file could not be read"),
         ]
         assert expected_stderr_calls == md5hasher.stderr.call_args_list
         assert rc == 1
@@ -179,15 +179,15 @@ class TestMD5Hasher:
 
         rc = md5hasher.check_hash("foo", args)
         expected_stdout_calls = [
-            mocker.call("AUTHORS: FAILED open or read\n"),
-            mocker.call("README.rst: FAILED open or read\n"),
+            mocker.call("AUTHORS: FAILED open or read"),
+            mocker.call("README.rst: FAILED open or read"),
         ]
         assert expected_stdout_calls == md5hasher.stdout.call_args_list
 
         expected_stderr_calls = [
-            mocker.call("hasher md5: AUTHORS: No such file or directory\n"),
-            mocker.call("hasher md5: README.rst: No such file or directory\n"),
-            mocker.call("hasher md5: WARNING: 2 listed files could not be read\n"),
+            mocker.call("hasher md5: AUTHORS: No such file or directory"),
+            mocker.call("hasher md5: README.rst: No such file or directory"),
+            mocker.call("hasher md5: WARNING: 2 listed files could not be read"),
         ]
         assert expected_stderr_calls == md5hasher.stderr.call_args_list
         assert rc == 1
@@ -257,7 +257,7 @@ class TestMD5Hasher:
         assert expected_stdout_calls == md5hasher.stdout.call_args_list
 
         expected_stderr_calls = [
-            mocker.call("hasher md5: README.rst: No such file or directory\n")
+            mocker.call("hasher md5: README.rst: No such file or directory")
         ]
         assert expected_stderr_calls == md5hasher.stderr.call_args_list
         assert rc == 1
@@ -273,8 +273,8 @@ class TestMD5Hasher:
         args.warn = True
         rc = md5hasher.check_hash("foo", args)
         expected_stdout_calls = [
-            mocker.call("AUTHORS: OK\n"),
-            mocker.call("README.rst: OK\n"),
+            mocker.call("AUTHORS: OK"),
+            mocker.call("README.rst: OK"),
         ]
         assert expected_stdout_calls == md5hasher.stdout.call_args_list
         assert [] == md5hasher.stderr.call_args_list
@@ -291,14 +291,14 @@ class TestMD5Hasher:
 
         args.warn = True
         rc = md5hasher.check_hash("foo", args)
-        expected_stdout_calls = [mocker.call("AUTHORS: OK\n")]
+        expected_stdout_calls = [mocker.call("AUTHORS: OK")]
         assert expected_stdout_calls == md5hasher.stdout.call_args_list
 
         expected_stderr_calls = [
             mocker.call(
-                "hasher md5: foo: 2: improperly formatted MD5 checksum" " line\n"
+                "hasher md5: foo: 2: improperly formatted MD5 checksum" " line"
             ),
-            mocker.call("hasher md5: WARNING: 1 line is improperly formatted\n"),
+            mocker.call("hasher md5: WARNING: 1 line is improperly formatted"),
         ]
         assert expected_stderr_calls == md5hasher.stderr.call_args_list
         assert rc == 1

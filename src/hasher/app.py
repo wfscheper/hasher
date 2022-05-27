@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import Any
 import functools
 import logging
 
 import click
 
-from .hashes import MD5Hasher
+from .hashes import MD5Hasher, SHA1Hasher, SHA256Hasher
 
 log = logging.getLogger(__name__)
 
@@ -60,37 +63,37 @@ def hasher(ctx, verbose, log_file, debug):
     logging.basicConfig(**log_config)
 
 
-hasher_options = [
+hasher_options: list[tuple[list[str], dict[str, Any]]] = [
     (
-        ("-c", "--check"),
+        ["-c", "--check"],
         dict(is_flag=True, help="read hashes from FILEs and check them"),
     ),
-    (("-b", "--binary", "mode"), dict(flag_value="binary", help="read in binary mode")),
+    (["-b", "--binary", "mode"], dict(flag_value="binary", help="read in binary mode")),
     (
-        ("-t", "--text", "mode"),
+        ["-t", "--text", "mode"],
         dict(flag_value="text", default=True, help="read in text mode (default)"),
     ),
     (
-        ("--quiet",),
+        ["--quiet"],
         dict(is_flag=True, help="don't print OK for each successfully verified file"),
     ),
     (
-        ("--status",),
+        ["--status"],
         dict(is_flag=True, help="don't output anything, status code shows success"),
     ),
     (
-        ("-w", "--warn"),
+        ["-w", "--warn"],
         dict(is_flag=True, help="warn about improperly formatted checksum lines"),
     ),
     (
-        ("--strict",),
+        ["--strict"],
         dict(is_flag=True, help="with --check, exit non-zero for any invalid input"),
     ),
 ]
 
-hasher_arguments = [
+hasher_arguments: list[tuple[list[str], dict[str, Any]]] = [
     (
-        ("files",),
+        ["files"],
         dict(
             nargs=-1,
             type=click.Path(
@@ -106,6 +109,16 @@ def md5(ctx, files, check, mode, quiet, status, warn, strict):
     _hasher(MD5Hasher, files, check, mode, quiet, status, warn, strict)
 
 
+@click.pass_context
+def sha1(ctx, files, check, mode, quiet, status, warn, strict):
+    _hasher(SHA1Hasher, files, check, mode, quiet, status, warn, strict)
+
+
+@click.pass_context
+def sha256(ctx, files, check, mode, quiet, status, warn, strict):
+    _hasher(SHA256Hasher, files, check, mode, quiet, status, warn, strict)
+
+
 def _hasher(klass, files, check, mode, quiet, status, warn, strict):
     args = AttrDict(
         files=files,
@@ -117,13 +130,20 @@ def _hasher(klass, files, check, mode, quiet, status, warn, strict):
         warn=warn,
         strict=strict,
     )
-    hasher = klass(click.echo, functools.partial(click.echo, error=True))
+    hasher = klass(click.echo, functools.partial(click.echo, err=True))
     hasher.take_action(args)
 
 
 for args, kwargs in hasher_arguments:
     md5 = click.argument(*args, **kwargs)(md5)
+    sha1 = click.argument(*args, **kwargs)(sha1)
+    sha256 = click.argument(*args, **kwargs)(sha256)
 
 for args, kwargs in hasher_options:
     md5 = click.option(*args, **kwargs)(md5)
-md5 = hasher.command()(md5)
+    sha1 = click.option(*args, **kwargs)(sha1)
+    sha256 = click.option(*args, **kwargs)(sha256)
+
+md5 = hasher.command(help="Generate or check md5 hashes")(md5)
+sha1 = hasher.command(help="Generate or check sha1 hashes")(sha1)
+sha256 = hasher.command(help="Generate or check sha256 hashes")(sha256)

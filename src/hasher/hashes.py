@@ -13,11 +13,23 @@
 # limitations under the License.
 
 from io import open
+from typing import IO, TYPE_CHECKING, Any, Callable, ClassVar, Iterator, Pattern, cast
 import hashlib
 import logging
 import os
 import re
 import sys
+
+if TYPE_CHECKING:
+    Hash = hashlib._Hash
+else:
+    Hash = None
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol
+else:
+    from typing import Protocol
+
 
 FORMAT_ERROR = "MISFORMATTED"
 HASH_ERROR = "FAILED"
@@ -26,7 +38,12 @@ SUCCESS = "OK"
 EXCLUDES = ("base.py", "__init__.py")
 PATH = os.path.dirname(__file__)
 PYEXT = ".py"
-STATUS_MSG = "{0}: {1}\n"
+STATUS_MSG = "{0}: {1}"
+
+
+class Writer(Protocol):
+    def __call__(self, message: Any, *args: Any, **kwargs: Any) -> None:
+        ...
 
 
 class Hasher:
@@ -35,14 +52,18 @@ class Hasher:
     algorithms.
     """
 
+    CHECK_RE: ClassVar[Pattern]
+    hashlib: ClassVar[Callable[..., Hash]]
+    name: ClassVar[str]
+
     log = logging.getLogger(__name__)
 
-    def __init__(self, stdout, stderr):
+    def __init__(self, stdout: Writer, stderr: Writer) -> None:
         self.chunk_size = 64 * 2048
         self.stdout = stdout
         self.stderr = stderr
 
-    def _calculate_hash(self, file_object):
+    def _calculate_hash(self, file_object: IO) -> str:
         """
         Calculate a hash value for the data in ``file_object
         """
@@ -51,12 +72,12 @@ class Hasher:
             hasher.update(chunk)
         return hasher.hexdigest()
 
-    def _open_file(self, fname, binary=False):
+    def _open_file(self, fname: str, binary: bool = False) -> IO:
         if fname == "-":
             return sys.stdin
         return open(fname, "rb" if binary else "r")
 
-    def check_hash(self, fname, args):
+    def check_hash(self, fname: str, args: Any) -> int:
         """
         Check the hashed values in files against the calculated values
 
@@ -65,7 +86,7 @@ class Hasher:
         list: [(fname, 'OK' or 'FAILED' or 'FAILED open or read'),...]
         Error counts: (format_erros, hash_errors, read_errors)
         """
-        fobj = self._open_file(fname)
+        fobj = self._open_file(fname, args.binary)
 
         rc = 0
         format_errors = 0
@@ -77,10 +98,8 @@ class Hasher:
             if not m:
                 if args.warn:
                     self.stderr(
-                        "hasher {0}: {1}: {2}: improperly formatted {3}"
-                        " checksum line\n".format(
-                            self.name, fname, idx + 1, self.name.upper()
-                        )
+                        f"hasher {self.name}: {fname}: {idx+1}: improperly formatted "
+                        f"{self.name.upper()} checksum line"
                     )
                 format_errors += 1
                 rc = 1
@@ -91,9 +110,7 @@ class Hasher:
                 check_f = open(check_file, "rb" if binary == "*" else "r")
             except IOError:
                 self.stderr(
-                    "hasher {0}: {1}: No such file or directory\n".format(
-                        self.name, check_file
-                    )
+                    f"hasher {self.name}: {check_file}: No such file or directory"
                 )
                 if not args.status:
                     self.stdout(STATUS_MSG.format(check_file, READ_ERROR))
@@ -111,58 +128,53 @@ class Hasher:
                 rc = 1
 
         if format_errors and not args.status:
+            lines = "line" + ("s" if format_errors > 1 else "")
+            are = "are" if format_errors > 1 else "is"
             self.stderr(
-                "hasher {0}: WARNING: {1} line{2} {3} improperly"
-                " formatted\n".format(
-                    self.name,
-                    format_errors,
-                    "s" if format_errors > 1 else "",
-                    "are" if format_errors > 1 else "is",
-                )
+                f"hasher {self.name}: WARNING: {format_errors} {lines} {are} "
+                "improperly formatted"
             )
         if read_errors and not args.status:
+            files = "file" + ("s" if read_errors > 1 else "")
             self.stderr(
-                "hasher {0}: WARNING: {1} listed file{2}"
-                " could not be read\n".format(
-                    self.name, read_errors, "s" if read_errors > 1 else ""
-                )
+                f"hasher {self.name}: WARNING: {read_errors} listed {files} "
+                "could not be read"
             )
         if hash_errors and not args.status:
+            checksums = "checksum" + ("s" if hash_errors > 1 else "")
             self.stderr(
-                "hasher {0}: WARNING: {1} computed checksum{2}"
-                " did NOT match\n".format(
-                    self.name, hash_errors, "s" if hash_errors > 1 else ""
-                )
+                f"hasher {self.name}: WARNING: {hash_errors} computed {checksums} "
+                "did NOT match"
             )
         return rc
 
-    def generate_hash(self, fname, args):
+    def generate_hash(self, fname: str, args: Any) -> None:
         """Generate hashes for files"""
         fobj = self._open_file(fname, args.binary)
         hash_value = self._calculate_hash(fobj)
 
-        line = "{0} {1}{2}\n".format(hash_value, "*" if args.binary else " ", fname)
+        line = f"{hash_value} {'*' if args.binary else ' '}{fname}"
 
         if "//" in line:
             line = "//" + line.replace("//", "////")
         self.stdout(line)
 
-    def iterchunks(self, file_object):
+    def iterchunks(self, file_object: IO) -> Iterator[bytes]:
         data = file_object.read(self.chunk_size)
         if isinstance(data, str):
             while data != "":
-                yield data.encode("utf-8")
+                yield cast(str, data).encode("utf-8")
                 data = file_object.read(self.chunk_size)
         else:
             while data != b"":
-                yield data
+                yield cast(bytes, data)
                 data = file_object.read(self.chunk_size)
 
-    def take_action(self, parsed_args):
+    def take_action(self, parsed_args: Any) -> None:
         if parsed_args.check and (parsed_args.binary and parsed_args.text):
             raise RuntimeError(
-                "the --binary and --text options are meaningless when"
-                " verifying checksums"
+                "the --binary and --text options are meaningless when "
+                "verifying checksums"
             )
 
         if not parsed_args.check and (
@@ -172,11 +184,14 @@ class Hasher:
             or parsed_args.strict
         ):
             raise RuntimeError(
-                "the --warn, --status, and --quiet options are meaningful"
-                " only when verifying checksums"
+                "the --warn, --status, and --quiet options are meaningful "
+                "only when verifying checksums"
             )
 
-        for fname in parsed_args.file:
+        if not parsed_args.files:
+            parsed_args.files = ["-"]
+
+        for fname in parsed_args.files:
             if parsed_args.check:
                 self.check_hash(fname, parsed_args)
             else:
