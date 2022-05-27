@@ -1,50 +1,63 @@
 [tool.poetry]
-name = "hasher"
-version = "2.0.1"
-description = "Provide multiple hashing algorithms from a single code base"
-license = "Apache-2.0"
 authors = ["Walter Scheper <walter.scheper@gmail.com>"]
-readme = "README.rst"
-homepage = "https://github.com/wfscheper/hasher"
-repository = "https://github.com/wfscheper/hasher.git"
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Environment :: Console",
-    "Intended Audience :: Developers",
-    "Intended Audience :: Information Technology",
-    "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python",
-    "Topic :: Utilities",
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Topic :: Utilities",
 ]
+description = "Provide multiple hashing algorithms from a single code base"
+homepage = "https://github.com/wfscheper/hasher"
+license = "Apache-2.0"
+name = "hasher"
+packages = [
+  {include = "hasher", from = "src"},
+]
+readme = "README.rst"
+repository = "https://github.com/wfscheper/hasher.git"
+version = "2.0.1"
 
 [tool.poetry.scripts]
 hasher = "hasher.app:hasher"
 
 [tool.poetry.dependencies]
-python = "~2.7 || ^3.5"
-click = "^7.0"
+click = "^8.1.3"
+python = "^3.7"
 
 [tool.poetry.dev-dependencies]
-black = {version = "*",allows-prereleases = true,python = ">=3.6"}
-pytest = "^4.3"
-pytest-mock = "^1.10"
-isort = {version = "^4.3",extras = ["pyproject"]}
-flake8 = "^3.7"
-pytest-cov = "^2.6"
-more-itertools = {version = "^5.0",python = "^2.7"}
+black = "^22.3.0"
+flake8 = "^4.0.1"
+isort = "^5.10.1"
+pytest = "^7.1.2"
+pytest-cov = "^3.0.0"
+pytest-mock = "^3.7.0"
+mypy = "^0.960"
 
-[tool.black]
-line-length = 132
+[tool.coverage.run]
+branch = true
+omit = "tests/*"
+source = "hasher"
+
+[tool.coverage.paths]
+source = [
+  "hasher",
+  "*/site-packages/hasher",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
 
 [tool.isort]
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-line_length = 132
+from_first = true
+line_length = 88
+profile = "black"
 
 [build-system]
-requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
+requires = ["poetry>=0.12"]

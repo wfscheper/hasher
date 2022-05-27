@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from io import open
 import hashlib
 import logging
 import os
 import re
 import sys
-from io import open
 
 FORMAT_ERROR = "MISFORMATTED"
 HASH_ERROR = "FAILED"
@@ -78,7 +78,9 @@ class Hasher:
                 if args.warn:
                     self.stderr(
                         "hasher {0}: {1}: {2}: improperly formatted {3}"
-                        " checksum line\n".format(self.name, fname, idx + 1, self.name.upper())
+                        " checksum line\n".format(
+                            self.name, fname, idx + 1, self.name.upper()
+                        )
                     )
                 format_errors += 1
                 rc = 1
@@ -88,7 +90,11 @@ class Hasher:
             try:
                 check_f = open(check_file, "rb" if binary == "*" else "r")
             except IOError:
-                self.stderr("hasher {0}: {1}: No such file or directory\n".format(self.name, check_file))
+                self.stderr(
+                    "hasher {0}: {1}: No such file or directory\n".format(
+                        self.name, check_file
+                    )
+                )
                 if not args.status:
                     self.stdout(STATUS_MSG.format(check_file, READ_ERROR))
                 read_errors += 1
@@ -108,18 +114,25 @@ class Hasher:
             self.stderr(
                 "hasher {0}: WARNING: {1} line{2} {3} improperly"
                 " formatted\n".format(
-                    self.name, format_errors, "s" if format_errors > 1 else "", "are" if format_errors > 1 else "is"
+                    self.name,
+                    format_errors,
+                    "s" if format_errors > 1 else "",
+                    "are" if format_errors > 1 else "is",
                 )
             )
         if read_errors and not args.status:
             self.stderr(
                 "hasher {0}: WARNING: {1} listed file{2}"
-                " could not be read\n".format(self.name, read_errors, "s" if read_errors > 1 else "")
+                " could not be read\n".format(
+                    self.name, read_errors, "s" if read_errors > 1 else ""
+                )
             )
         if hash_errors and not args.status:
             self.stderr(
                 "hasher {0}: WARNING: {1} computed checksum{2}"
-                " did NOT match\n".format(self.name, hash_errors, "s" if hash_errors > 1 else "")
+                " did NOT match\n".format(
+                    self.name, hash_errors, "s" if hash_errors > 1 else ""
+                )
             )
         return rc
 
@@ -147,10 +160,21 @@ class Hasher:
 
     def take_action(self, parsed_args):
         if parsed_args.check and (parsed_args.binary and parsed_args.text):
-            raise RuntimeError("the --binary and --text options are meaningless when" " verifying checksums")
+            raise RuntimeError(
+                "the --binary and --text options are meaningless when"
+                " verifying checksums"
+            )
 
-        if not parsed_args.check and (parsed_args.warn or parsed_args.status or parsed_args.quiet or parsed_args.strict):
-            raise RuntimeError("the --warn, --status, and --quiet options are meaningful" " only when verifying checksums")
+        if not parsed_args.check and (
+            parsed_args.warn
+            or parsed_args.status
+            or parsed_args.quiet
+            or parsed_args.strict
+        ):
+            raise RuntimeError(
+                "the --warn, --status, and --quiet options are meaningful"
+                " only when verifying checksums"
+            )
 
         for fname in parsed_args.file:
             if parsed_args.check:

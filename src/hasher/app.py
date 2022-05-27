@@ -29,7 +29,13 @@ class AttrDict:
 
 @click.group()
 @click.version_option()
-@click.option("-v", "--verbose", count=True, default=0, help="Increase verbosity of output. Can be repeated.")
+@click.option(
+    "-v",
+    "--verbose",
+    count=True,
+    default=0,
+    help="Increase verbosity of output. Can be repeated.",
+)
 @click.option(
     "--log-file",
     default=None,
@@ -55,16 +61,44 @@ def hasher(ctx, verbose, log_file, debug):
 
 
 hasher_options = [
-    (("-c", "--check"), dict(is_flag=True, help="read hashes from FILEs and check them")),
+    (
+        ("-c", "--check"),
+        dict(is_flag=True, help="read hashes from FILEs and check them"),
+    ),
     (("-b", "--binary", "mode"), dict(flag_value="binary", help="read in binary mode")),
-    (("-t", "--text", "mode"), dict(flag_value="text", default=True, help="read in text mode (default)")),
-    (("--quiet",), dict(is_flag=True, help="don't print OK for each successfully verified file")),
-    (("--status",), dict(is_flag=True, help="don't output anything, status code shows success")),
-    (("-w", "--warn"), dict(is_flag=True, help="warn about improperly formatted checksum lines")),
-    (("--strict",), dict(is_flag=True, help="with --check, exit non-zero for any invalid input")),
+    (
+        ("-t", "--text", "mode"),
+        dict(flag_value="text", default=True, help="read in text mode (default)"),
+    ),
+    (
+        ("--quiet",),
+        dict(is_flag=True, help="don't print OK for each successfully verified file"),
+    ),
+    (
+        ("--status",),
+        dict(is_flag=True, help="don't output anything, status code shows success"),
+    ),
+    (
+        ("-w", "--warn"),
+        dict(is_flag=True, help="warn about improperly formatted checksum lines"),
+    ),
+    (
+        ("--strict",),
+        dict(is_flag=True, help="with --check, exit non-zero for any invalid input"),
+    ),
 ]
 
-hasher_arguments = [(("files",), dict(nargs=-1, type=click.Path(exists=True, dir_okay=False, resolve_path=True, allow_dash=True)))]
+hasher_arguments = [
+    (
+        ("files",),
+        dict(
+            nargs=-1,
+            type=click.Path(
+                exists=True, dir_okay=False, resolve_path=True, allow_dash=True
+            ),
+        ),
+    )
+]
 
 
 @click.pass_context
