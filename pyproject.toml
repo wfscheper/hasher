@@ -33,15 +33,15 @@ python = "^3.7"
 black = "^22.3.0"
 flake8 = "^4.0.1"
 isort = "^5.10.1"
+mypy = "^0.960"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
 pytest-mock = "^3.7.0"
-mypy = "^0.960"
 
 [tool.coverage.run]
 branch = true
-omit = "tests/*"
-source = "hasher"
+omit = ["tests/*"]
+source = ["hasher"]
 
 [tool.coverage.paths]
 source = [
