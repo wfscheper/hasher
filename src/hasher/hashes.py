@@ -47,10 +47,8 @@ class Writer(Protocol):
 
 
 class Hasher:
-    """
-    Base class for various sub-classes that implement specific hashing
-    algorithms.
-    """
+    """Base class for various sub-classes that implement specific hashing
+    algorithms."""
 
     CHECK_RE: ClassVar[Pattern]
     hashlib: ClassVar[Callable[..., Hash]]
@@ -64,9 +62,7 @@ class Hasher:
         self.stderr = stderr
 
     def _calculate_hash(self, file_object: IO) -> str:
-        """
-        Calculate a hash value for the data in ``file_object
-        """
+        """Calculate a hash value for the data in ``file_object."""
         hasher = self.hashlib()
         for chunk in self.iterchunks(file_object):
             hasher.update(chunk)
@@ -78,8 +74,7 @@ class Hasher:
         return open(fname, "rb" if binary else "r")
 
     def check_hash(self, fname: str, args: Any) -> int:
-        """
-        Check the hashed values in files against the calculated values
+        """Check the hashed values in files against the calculated values.
 
         Returns a list and a tuple of error counts.
 
@@ -149,7 +144,7 @@ class Hasher:
         return rc
 
     def generate_hash(self, fname: str, args: Any) -> None:
-        """Generate hashes for files"""
+        """Generate hashes for files."""
         fobj = self._open_file(fname, args.binary)
         hash_value = self._calculate_hash(fobj)
 

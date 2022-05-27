@@ -14,12 +14,14 @@ all: lint test
 .PHONY: format fmt
 format fmt: venv
 	poetry run isort src/ tests/
+	poetry run docformatter --in-place --recursive src/
 	poetry run black src/ tests/
 
 .PHONY: lint
 lint: venv
 	poetry run flake8 src/ tests/
 	poetry run isort --check --diff src/ tests/
+	poetry run docformatter --check --recursive src/
 	poetry run black --check --diff src/ tests/
 	poetry run mypy src/
 
