@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .app import hasher
+from hasher.app import hasher
 
 if __name__ == "__main__":
     hasher()

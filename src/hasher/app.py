@@ -20,7 +20,8 @@ import logging
 
 import click
 
-from .hashes import MD5Hasher, SHA1Hasher, SHA256Hasher
+from hasher.args import Args
+from hasher.hashes import Hasher, MD5Hasher, SHA1Hasher, SHA256Hasher
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ class AttrDict:
 )
 @click.option("--debug/--no-debug", default=False, help="Show tracebacks on errors")
 @click.pass_context
-def hasher(ctx, verbose, log_file, debug):
+def hasher(ctx: click.Context, verbose: int, log_file: str, debug: bool) -> None:
     ctx.ensure_object(dict)
     log.debug("setting debug mode to '%s'", str(debug))
     ctx.obj["DEBUG"] = debug
@@ -57,7 +58,7 @@ def hasher(ctx, verbose, log_file, debug):
         log_level = logging.INFO
     else:
         log_level = logging.DEBUG
-    log_config = dict(level=log_level)
+    log_config: dict[str, Any] = dict(level=log_level)
     if log_file is not None:
         log_config["filename"] = log_file
     logging.basicConfig(**log_config)
@@ -96,31 +97,65 @@ hasher_arguments: list[tuple[list[str], dict[str, Any]]] = [
         ["files"],
         dict(
             nargs=-1,
-            type=click.Path(
-                exists=True, dir_okay=False, resolve_path=True, allow_dash=True
-            ),
+            type=click.Path(exists=True, dir_okay=False, allow_dash=True),
         ),
     )
 ]
 
 
 @click.pass_context
-def md5(ctx, files, check, mode, quiet, status, warn, strict):
+def md5(
+    ctx: click.Context,
+    files: list[str],
+    check: bool,
+    mode: str,
+    quiet: bool,
+    status: bool,
+    warn: bool,
+    strict: bool,
+) -> None:
     _hasher(MD5Hasher, files, check, mode, quiet, status, warn, strict)
 
 
 @click.pass_context
-def sha1(ctx, files, check, mode, quiet, status, warn, strict):
+def sha1(
+    ctx: click.Context,
+    files: list[str],
+    check: bool,
+    mode: str,
+    quiet: bool,
+    status: bool,
+    warn: bool,
+    strict: bool,
+) -> None:
     _hasher(SHA1Hasher, files, check, mode, quiet, status, warn, strict)
 
 
 @click.pass_context
-def sha256(ctx, files, check, mode, quiet, status, warn, strict):
+def sha256(
+    ctx: click.Context,
+    files: list[str],
+    check: bool,
+    mode: str,
+    quiet: bool,
+    status: bool,
+    warn: bool,
+    strict: bool,
+) -> None:
     _hasher(SHA256Hasher, files, check, mode, quiet, status, warn, strict)
 
 
-def _hasher(klass, files, check, mode, quiet, status, warn, strict):
-    args = AttrDict(
+def _hasher(
+    klass: type[Hasher],
+    files: list[str],
+    check: bool,
+    mode: str,
+    quiet: bool,
+    status: bool,
+    warn: bool,
+    strict: bool,
+):
+    args = Args(
         files=files,
         check=check,
         binary=(mode == "binary"),
@@ -144,6 +179,6 @@ for args, kwargs in hasher_options:
     sha1 = click.option(*args, **kwargs)(sha1)
     sha256 = click.option(*args, **kwargs)(sha256)
 
-md5 = hasher.command(help="Generate or check md5 hashes")(md5)
-sha1 = hasher.command(help="Generate or check sha1 hashes")(sha1)
-sha256 = hasher.command(help="Generate or check sha256 hashes")(sha256)
+_md5: click.Command = hasher.command(help="Generate or check md5 hashes")(md5)
+_sha1: click.Command = hasher.command(help="Generate or check sha1 hashes")(sha1)
+_sha256: click.Command = hasher.command(help="Generate or check sha256 hashes")(sha256)

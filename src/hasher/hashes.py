@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from typing import (
     IO,
     TYPE_CHECKING,
@@ -28,6 +30,8 @@ import logging
 import os
 import re
 import sys
+
+from hasher.args import Args
 
 if TYPE_CHECKING:
     Hash = hashlib._Hash
@@ -46,7 +50,14 @@ STATUS_MSG = "{0}: {1}"
 
 
 class Writer(Protocol):
-    def __call__(self, message: Any, *args: Any, **kwargs: Any) -> None: ...
+    def __call__(
+        self,
+        message: Any | None = None,
+        file: IO[Any] | None = None,
+        nl: bool = True,
+        err: bool = False,
+        color: bool | None = None,
+    ) -> None: ...
 
 
 class Hasher:
@@ -57,7 +68,7 @@ class Hasher:
     hashlib: ClassVar[Callable[..., Hash]]
     name: ClassVar[str]
 
-    log = logging.getLogger(__name__)
+    log: ClassVar[logging.Logger] = logging.getLogger(__name__)
 
     def __init__(self, stdout: Writer, stderr: Writer) -> None:
         self.chunk_size = 64 * 2048
@@ -76,7 +87,7 @@ class Hasher:
             return sys.stdin
         return open(fname, "rb" if binary else "r")
 
-    def check_hash(self, fname: str, args: Any) -> int:
+    def check_hash(self, fname: str, args: Args) -> int:
         """Check the hashed values in files against the calculated values.
 
         Returns a list and a tuple of error counts.
@@ -146,7 +157,7 @@ class Hasher:
             )
         return rc
 
-    def generate_hash(self, fname: str, args: Any) -> None:
+    def generate_hash(self, fname: str, args: Args) -> None:
         """Generate hashes for files."""
         fobj = self._open_file(fname, args.binary)
         hash_value = self._calculate_hash(fobj)
@@ -168,7 +179,7 @@ class Hasher:
                 yield cast(bytes, data)
                 data = file_object.read(self.chunk_size)
 
-    def take_action(self, parsed_args: Any) -> None:
+    def take_action(self, parsed_args: Args) -> None:
         if parsed_args.check and (parsed_args.binary and parsed_args.text):
             raise RuntimeError(
                 "the --binary and --text options are meaningless when "
