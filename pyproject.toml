@@ -20,7 +20,7 @@ packages = [
 ]
 readme = "README.rst"
 repository = "https://github.com/wfscheper/hasher.git"
-version = "2.1.0a0"
+version = "2.1.0a1"
 
 [tool.poetry.scripts]
 hasher = "hasher.app:hasher"
