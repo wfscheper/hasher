@@ -12,8 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from io import open
-from typing import IO, TYPE_CHECKING, Any, Callable, ClassVar, Iterator, Pattern, cast
+from typing import (
+    IO,
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Iterator,
+    Pattern,
+    Protocol,
+    cast,
+)
 import hashlib
 import logging
 import os
@@ -24,11 +33,6 @@ if TYPE_CHECKING:
     Hash = hashlib._Hash
 else:
     Hash = None
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
-else:
-    from typing import Protocol
 
 
 FORMAT_ERROR = "MISFORMATTED"
@@ -42,8 +46,7 @@ STATUS_MSG = "{0}: {1}"
 
 
 class Writer(Protocol):
-    def __call__(self, message: Any, *args: Any, **kwargs: Any) -> None:
-        ...
+    def __call__(self, message: Any, *args: Any, **kwargs: Any) -> None: ...
 
 
 class Hasher:
@@ -103,7 +106,7 @@ class Hasher:
 
             try:
                 check_f = open(check_file, "rb" if binary == "*" else "r")
-            except IOError:
+            except OSError:
                 self.stderr(
                     f"hasher {self.name}: {check_file}: No such file or directory"
                 )

@@ -38,13 +38,16 @@ def args():
 class TestMD5Hasher:
     data = "a string of data to hash\n"
     data_md5 = hashlib.md5(data.encode("utf-8")).hexdigest()
-    check_data = "3ac11b17fa463072f069580031317af2  AUTHORS\n4e6ee384b7a0a002681cda43a5ccc9d0  README.rst\n"
+    check_data = (
+        "3ac11b17fa463072f069580031317af2  AUTHORS\n"
+        "4e6ee384b7a0a002681cda43a5ccc9d0  README.rst\n"
+    )
 
     def test_generate_invalid_file(self, mocker, md5hasher, args):
         _open = mocker.patch("hasher.hashes.open", mocker.mock_open())
-        _open.side_effect = IOError()
+        _open.side_effect = OSError()
 
-        with pytest.raises(IOError):
+        with pytest.raises(OSError):
             md5hasher.generate_hash("foo", args)
         _open.assert_called_once_with("foo", "r")
 
@@ -284,7 +287,8 @@ class TestMD5Hasher:
         _open = mocker.patch("hasher.hashes.open", mocker.mock_open())
         _open.side_effect = [
             io.StringIO(
-                "3ac11b17fa463072f069580031317af2  AUTHORS\n4e6ee384b7a0a002681cda43a5ccc9d0 +README.rst\n"
+                "3ac11b17fa463072f069580031317af2  AUTHORS\n"
+                "4e6ee384b7a0a002681cda43a5ccc9d0 +README.rst\n"
             ),
             io.StringIO("AUTHORS\n"),
         ]

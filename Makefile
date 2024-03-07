@@ -1,6 +1,6 @@
 PACKAGE = hasher
 
-PYVERS = 3.7 3.8 3.9 3.10
+PYVERS = 3.8 3.9 3.10 3.11 3.12
 PYVER  = $(firstword $(PYVERS))
 
 VIRTUAL_ENV := $(lastword $(shell poetry env use python$(PYVER)))
@@ -13,16 +13,12 @@ all: lint test
 
 .PHONY: format fmt
 format fmt: venv
-	poetry run isort src/ tests/
-	poetry run docformatter --in-place --recursive src/
-	poetry run black src/ tests/
+	poetry run ruff check --select I --fix
+	poetry run ruff format .
 
 .PHONY: lint
 lint: venv
-	poetry run flake8 src/ tests/
-	poetry run isort --check --diff src/ tests/
-	poetry run docformatter --check --recursive src/
-	poetry run black --check --diff src/ tests/
+	poetry run ruff check
 	poetry run mypy src/
 
 .PHONY: test
@@ -42,3 +38,4 @@ $(SITE_PACKAGES)/$(PACKAGE).pth: poetry.lock
 
 poetry.lock: pyproject.toml
 	poetry lock
+	@touch $@
