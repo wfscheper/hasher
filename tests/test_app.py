@@ -3,16 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 
 from click.testing import CliRunner
-from hasher.app import hasher
 import pytest
+
+from hasher.app import hasher
 
 
 def test_hasher_usage():
     runner = CliRunner()
-    result = runner.invoke(
-        hasher,
-    )
-    assert result.exit_code == 0
+    result = runner.invoke(hasher)
+    assert 2 == result.exit_code
     assert (
         """Usage: hasher [OPTIONS] COMMAND [ARGS]...
 
@@ -28,7 +27,7 @@ Commands:
   sha1    Generate or check sha1 hashes
   sha256  Generate or check sha256 hashes
 """
-        == result.output
+        == result.stderr
     )
 
 
@@ -42,7 +41,7 @@ Try 'hasher --help' for help.
 
 Error: Missing command.
 """
-        == result.output
+        == result.stderr
     )
 
 
@@ -58,7 +57,7 @@ def test_stdin(hash: str, expected: str):
     runner = CliRunner()
     result = runner.invoke(hasher, [hash], input="test\n")
     assert 0 == result.exit_code
-    assert f"{expected}  -\n" == result.output
+    assert f"{expected}  -\n" == result.stdout
 
 
 @pytest.mark.parametrize("hash,expected", test_inputs)
@@ -68,12 +67,12 @@ def test_file(hash: str, expected: str):
         Path("test.txt").write_text("test\n")
         result = runner.invoke(hasher, [hash, "test.txt"])
         assert 0 == result.exit_code, result.output
-        assert f"{expected}  test.txt\n" == result.output
+        assert f"{expected}  test.txt\n" == result.stdout
 
 
 @pytest.mark.parametrize("hash,checksum", test_inputs)
 def test_check(hash: str, checksum: str):
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     with runner.isolated_filesystem():
         Path("test1.txt").write_text("test\n")
         Path("test2.txt").write_text("test\n")
@@ -82,7 +81,7 @@ def test_check(hash: str, checksum: str):
         )
         result = runner.invoke(hasher, [hash, "--check", "checksums.txt"])
         assert 0 == result.exit_code, result.output
-        assert "test1.txt: OK\ntest2.txt: FAILED\n" == result.output
+        assert "test1.txt: OK\ntest2.txt: FAILED\n" == result.stdout
         assert (
             f"hasher {hash}: WARNING: 1 computed checksum did NOT match\n"
             == result.stderr
@@ -91,13 +90,13 @@ def test_check(hash: str, checksum: str):
 
 @pytest.mark.parametrize("hash,checksum", test_inputs)
 def test_check_bad_format(hash: str, checksum: str):
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     with runner.isolated_filesystem():
         Path("test1.txt").write_text("test\n")
         Path("checksums.txt").write_text(f"{checksum} test1.txt\n")
         result = runner.invoke(hasher, [hash, "--check", "checksums.txt"])
         assert 0 == result.exit_code, result.output
-        assert "" == result.output
+        assert "" == result.stdout
         assert (
             f"hasher {hash}: WARNING: 1 line is improperly formatted\n" == result.stderr
         )
@@ -105,13 +104,13 @@ def test_check_bad_format(hash: str, checksum: str):
 
 @pytest.mark.parametrize("hash,checksum", test_inputs)
 def test_check_bad_format_strict(hash: str, checksum: str):
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     with runner.isolated_filesystem():
         Path("test1.txt").write_text("test\n")
         Path("checksums.txt").write_text(f"{checksum} test1.txt\n")
         result = runner.invoke(hasher, [hash, "--check", "--strict", "checksums.txt"])
         assert 0 == result.exit_code, result.output
-        assert "" == result.output
+        assert "" == result.stdout
         assert (
             f"hasher {hash}: WARNING: 1 line is improperly formatted\n" == result.stderr
         )
@@ -119,7 +118,7 @@ def test_check_bad_format_strict(hash: str, checksum: str):
 
 @pytest.mark.parametrize("hash,checksum", test_inputs)
 def test_check_strict(hash: str, checksum: str):
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     with runner.isolated_filesystem():
         Path("test1.txt").write_text("test\n")
         Path("test2.txt").write_text("test\n")
@@ -128,7 +127,7 @@ def test_check_strict(hash: str, checksum: str):
         )
         result = runner.invoke(hasher, [hash, "--check", "--strict", "checksums.txt"])
         assert 0 == result.exit_code, result.output
-        assert "test1.txt: OK\ntest2.txt: FAILED\n" == result.output
+        assert "test1.txt: OK\ntest2.txt: FAILED\n" == result.stdout
         assert (
             f"hasher {hash}: WARNING: 1 computed checksum did NOT match\n"
             == result.stderr
