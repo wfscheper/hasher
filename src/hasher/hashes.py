@@ -14,14 +14,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
+from re import Pattern
 from typing import (
     IO,
     TYPE_CHECKING,
     Any,
-    Callable,
     ClassVar,
-    Iterator,
-    Pattern,
     Protocol,
     cast,
 )
@@ -107,7 +106,7 @@ class Hasher:
             if not m:
                 if args.warn:
                     self.stderr(
-                        f"hasher {self.name}: {fname}: {idx+1}: improperly formatted "
+                        f"hasher {self.name}: {fname}: {idx + 1}: improperly formatted "
                         f"{self.name.upper()} checksum line"
                     )
                 format_errors += 1

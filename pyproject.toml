@@ -1,47 +1,37 @@
-[tool.poetry]
-authors = ["Walter Scheper <walter.scheper@gmail.com>"]
+[build-system]
+requires = ["uv_build>=0.11.28,<0.12.0"]
+build-backend = "uv_build"
+
+[project]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Intended Audience :: Information Technology",
   "Intended Audience :: System Administrators",
-  "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Topic :: Utilities",
+]
+dependencies = [
+  "click>=8.1.3,<9",
 ]
 description = "Provide multiple hashing algorithms from a single code base"
 homepage = "https://github.com/wfscheper/hasher"
 license = "Apache-2.0"
 name = "hasher"
-packages = [
-  {include = "hasher", from = "src"},
-]
-readme = "README.rst"
-repository = "https://github.com/wfscheper/hasher.git"
+readme = "README.md"
+requires-python = ">=3.10"
 version = "2.1.0a1"
 
-[tool.poetry.scripts]
-hasher = "hasher.app:hasher"
-
-[tool.poetry.dependencies]
-click = "^8.1.3"
-python = "^3.8"
-
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.3.1"
-pytest = "^8.0.2"
-mypy = "^1.8.0"
-pytest-cov = "^4.1.0"
-pytest-mock = "^3.12.0"
-
-# only used in github actions
-[tool.poetry.group.github-actions]
-optional = true
-
-[tool.poetry.group.github-actions.dependencies]
-pytest-github-actions-annotate-failures = "^0.2.0"
+[dependency-groups]
+dev = [
+    "mypy>=2.2.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "pytest-mock>=3.15.1",
+    "ruff>=0.15.20",
+]
 
 [tool.coverage.run]
 branch = true
@@ -61,20 +51,13 @@ show_missing = true
 [tool.ruff.lint]
 select = [
   # pycodestyle
-  "E", "W",
-  # pyflakes
-  "F",
-  # isort
-  "I",
-  # bugbear
-  "B",
-  # pyupgrade
+  "E",
+  "W", # pyflakes
+  "F", # isort
+  "I", # bugbear
+  "B", # pyupgrade
   "UP",
 ]
 
 [tool.ruff.lint.isort]
 from-first = true
-
-[build-system]
-build-backend = "poetry.masonry.api"
-requires = ["poetry>=0.12"]

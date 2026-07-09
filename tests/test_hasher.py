@@ -59,7 +59,7 @@ class TestMD5Hasher:
         md5hasher.generate_hash("foo", args)
 
         _open.assert_called_once_with("foo", "r")
-        md5hasher.stdout.assert_called_with("%s  foo" % self.data_md5)
+        md5hasher.stdout.assert_called_with(f"{self.data_md5}  foo")
 
     def test_generate_display_text_binary(self, mocker, md5hasher, args):
         _open = mocker.patch(
@@ -70,7 +70,7 @@ class TestMD5Hasher:
         md5hasher.generate_hash("foo", args)
 
         _open.assert_called_once_with("foo", "rb")
-        md5hasher.stdout.assert_called_with("%s *foo" % self.data_md5)
+        md5hasher.stdout.assert_called_with(f"{self.data_md5} *foo")
 
     def test_checkresult_display(self, mocker, md5hasher, args):
         _open = mocker.patch("hasher.hashes.open", mocker.mock_open())
@@ -299,9 +299,7 @@ class TestMD5Hasher:
         assert expected_stdout_calls == md5hasher.stdout.call_args_list
 
         expected_stderr_calls = [
-            mocker.call(
-                "hasher md5: foo: 2: improperly formatted MD5 checksum" " line"
-            ),
+            mocker.call("hasher md5: foo: 2: improperly formatted MD5 checksum line"),
             mocker.call("hasher md5: WARNING: 1 line is improperly formatted"),
         ]
         assert expected_stderr_calls == md5hasher.stderr.call_args_list
